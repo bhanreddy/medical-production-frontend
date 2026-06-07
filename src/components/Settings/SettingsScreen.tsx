@@ -14,7 +14,7 @@ import { Badge } from '../ui/Badge';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { QRCodeSVG } from 'qrcode.react';
-import { BRANDING, PAYMENT_COPY, SETTINGS_SCREEN_COPY } from '../../config/appContent';
+import { PAYMENT_COPY, SETTINGS_SCREEN_COPY } from '../../config/appContent';
 
 const UPI_PATTERN = /^[^\s@]+@[^\s@]+$/;
 
