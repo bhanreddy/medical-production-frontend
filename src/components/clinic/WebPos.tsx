@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { usePosStore } from '../../store/posStore';
 import toast from 'react-hot-toast';
 import { useProductSearch, type SearchResult } from '../../hooks/useProductSearch';
+import { resolveBatchFromMedicineDetail } from '../../services/productLookupService';
 import { BillingSearchDropdown } from '../Billing/BillingSearchDropdown';
 import { UpiPaymentModals, type UpiModalState } from '../Billing/UpiPaymentModals';
 import { useUpiId } from '../../hooks/useUpiId';
@@ -19,6 +20,11 @@ import { PrinterService } from '../../services/printerService';
 import { InsufficientStockError } from '../../core/errors';
 import type { RootState } from '../../state/store';
 import type { PaymentMode, Product } from '../../core/types';
+
+const waitForNextPaint = () =>
+    new Promise<void>(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
 
 function mapPosPaymentToService(mode: string): PaymentMode {
     switch (mode) {
@@ -169,8 +175,17 @@ export const WebPos = () => {
                 { supplyType: 'INTRA' },
             );
 
-            const detailsRes = await api.get(`/sales/${sale.id || sale._local_id}`);
-            const items = detailsRes.data?.data?.sale_items || [];
+            let items = (sale as any).sale_items || [];
+            try {
+                const detailsRes = await api.get(`/sales/${sale.id || sale._local_id}`);
+                items = detailsRes.data?.data?.sale_items || items;
+            } catch (err) {
+                console.warn('Sale saved, but details fetch before print failed. Printing from sale response.', err);
+            }
+
+            setUpiModal('closed');
+            setPendingUpiAmount(0);
+            await waitForNextPaint();
             await PrinterService.printBill(sale, items);
 
             toast.success('Sale confirmed!');
@@ -257,22 +272,26 @@ export const WebPos = () => {
                 return;
             }
 
-            const batches = product.batches || [];
-            const batch = batches.find((b: any) => (b.id || b._local_id) === result.bestBatchId) || batches[0];
+            const batches = product.batches || product.medicine_batches || [];
+            const batch = resolveBatchFromMedicineDetail(batches, result.bestBatchId);
             if (!batch) {
-                toast.error('Batch not found');
+                toast.error('No sellable batch found');
                 return;
             }
 
             const maxStock = Number(batch.quantity_remaining ?? 0);
+            if (maxStock <= 0) {
+                toast.error('No stock available for this batch');
+                return;
+            }
             const price = Number(batch.sales_rate || batch.mrp || 0);
 
             store.addItem({
                 medicine_id: product.id || product._local_id,
                 medicine_name: product.name,
-                batch_id: batch.id || batch._local_id,
-                batch_number: batch.batch_number,
-                expiry_date: batch.expiry_date,
+                batch_id: batch.id || batch._local_id || '',
+                batch_number: batch.batch_number || '',
+                expiry_date: batch.expiry_date || '',
                 quantity: 1,
                 mrp: price,
                 purchase_price: Number(batch.purchase_price || batch.purchase_rate || 0),

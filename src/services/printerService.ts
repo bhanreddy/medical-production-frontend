@@ -14,6 +14,22 @@ export const PrinterService = {
 
     async printBill(sale: Sale, items: SaleItem[]) {
         try {
+            const saleData = sale as any;
+            const toNumber = (value: unknown, fallback = 0) => {
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? parsed : fallback;
+            };
+
+            const subtotal = toNumber(saleData.total_amount ?? saleData.subtotal);
+            const gstAmount = toNumber(saleData.tax_amount ?? saleData.gst_amount);
+            const discount = toNumber(saleData.discount_amount ?? saleData.discount);
+            const finalTotal = toNumber(
+                saleData.final_amount ?? saleData.net_amount,
+                Math.max(0, subtotal - discount + gstAmount),
+            );
+            const createdAt = saleData.created_at ? new Date(saleData.created_at) : new Date();
+            const invoiceDate = Number.isNaN(createdAt.getTime()) ? new Date() : createdAt;
+
             // 1. Fetch Authoritative Header Info (Local Cache) - WITH FALLBACK
             let profile: ShopProfile;
             try {
@@ -58,6 +74,9 @@ export const PrinterService = {
                 let productName = item.medicines?.name || '';
                 let batchNumber = item.medicine_batches?.batch_number || '';
                 let expiryDate = item.medicine_batches?.expiry_date || '';
+                const quantity = toNumber(item.quantity);
+                const unitPrice = toNumber(item.unit_price ?? item.mrp ?? item.price);
+                const total = toNumber(item.total_amount ?? item.total, quantity * unitPrice);
 
                 if (!productName || !batchNumber) {
                     try {
@@ -82,10 +101,10 @@ export const PrinterService = {
                         expiry_date: expiryDate
                     },
                     productName,
-                    quantity: item.quantity,
-                    unitPrice: item.unit_price || item.mrp || 0,
-                    total: item.total_amount || item.total || 0,
-                    gstRate: item.gst_rate || 0
+                    quantity,
+                    unitPrice,
+                    total,
+                    gstRate: toNumber(item.gst_rate)
                 };
             }));
 
@@ -94,13 +113,13 @@ export const PrinterService = {
                 shopProfile: profile,
                 customerName,
                 customerPhone,
-                invoiceNumber: sale.invoice_number,
-                date: new Date(sale.created_at).toLocaleString(),
+                invoiceNumber: saleData.invoice_number || 'Draft',
+                date: invoiceDate.toLocaleString(),
                 items: enrichedItems,
-                subtotal: sale.total_amount,
-                gstAmount: sale.tax_amount,
-                discount: sale.discount_amount,
-                finalTotal: sale.final_amount,
+                subtotal,
+                gstAmount,
+                discount,
+                finalTotal,
                 printHalfPage: enrichedItems.length <= BILL_PRINT_HALF_PAGE_MAX_ITEMS,
             });
 

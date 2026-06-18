@@ -15,7 +15,7 @@ import { BillingSearchDropdown } from './BillingSearchDropdown';
 import api from '../../lib/api';
 import { BillingService, type FinalizeSaleOptions } from '../../services/billingService';
 import { PrinterService } from '../../services/printerService';
-import { ProductLookupService } from '../../services/productLookupService';
+import { ProductLookupService, resolveBatchFromMedicineDetail } from '../../services/productLookupService';
 import { InsufficientStockError } from '../../core/errors';
 import { navigatePath } from '../../utils/navigatePath';
 import { BILLING_SCREEN_COPY } from '../../config/appContent';
@@ -290,11 +290,17 @@ export const BillingScreen: React.FC = () => {
             const product = detailsRes.data?.data;
             if (!product) return;
 
-            const batches = product.batches || [];
-            const batchToAdd = batches.find((b: any) => (b.id || b._local_id) === result.bestBatchId) || batches[0];
+            const batches = product.batches || product.medicine_batches || [];
+            const batchToAdd = resolveBatchFromMedicineDetail(batches, result.bestBatchId);
 
             if (!batchToAdd) {
-                console.error('Batch not found for ID:', result.bestBatchId);
+                console.error('No sellable batch for ID:', result.bestBatchId);
+                return;
+            }
+
+            const maxStock = Number(batchToAdd.quantity_remaining ?? 0);
+            if (maxStock <= 0) {
+                console.error('Batch has no stock:', result.bestBatchId);
                 return;
             }
 
@@ -317,11 +323,11 @@ export const BillingScreen: React.FC = () => {
                     updated_at: product.updated_at,
                     last_modified: Date.now()
                 },
-                batchId: batchToAdd.id || batchToAdd._local_id,
+                batchId: batchToAdd.id || batchToAdd._local_id || '',
                 name: product.name,
                 qty: 1,
                 price: unitPrice,
-                expiry: batchToAdd.expiry_date,
+                expiry: batchToAdd.expiry_date || '',
                 total: unitPrice,
             };
 

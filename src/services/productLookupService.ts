@@ -16,6 +16,52 @@ export async function readAllowExpiredSale(): Promise<boolean> {
     return false; // Default safe for online-first
 }
 
+export function matchesEntityId(
+    entity: { id?: string; _local_id?: string },
+    targetId: string | null | undefined,
+): boolean {
+    if (!targetId) return false;
+    return entity.id === targetId || entity._local_id === targetId;
+}
+
+export type MedicineBatchRow = {
+    id?: string;
+    _local_id?: string;
+    quantity_remaining?: number;
+    expiry_date?: string;
+    batch_number?: string;
+    mrp?: number;
+    sales_rate?: number;
+    purchase_price?: number;
+    purchase_rate?: number;
+    is_disposed?: boolean | number;
+};
+
+/** Pick the FEFO sellable batch from a medicine detail response. */
+export function resolveBatchFromMedicineDetail(
+    batches: MedicineBatchRow[],
+    bestBatchId: string | null,
+    allowExpired = false,
+): MedicineBatchRow | null {
+    const today = new Date().toISOString().split('T')[0];
+    const sellable = batches
+        .filter(batch => {
+            if (batch.is_disposed === true || batch.is_disposed === 1) return false;
+            const qty = Number(batch.quantity_remaining ?? 0);
+            if (qty <= 0) return false;
+            if (!allowExpired && batch.expiry_date && batch.expiry_date < today) return false;
+            return true;
+        })
+        .sort((a, b) => String(a.expiry_date ?? '').localeCompare(String(b.expiry_date ?? '')));
+
+    if (bestBatchId) {
+        const preferred = sellable.find(batch => matchesEntityId(batch, bestBatchId));
+        if (preferred) return preferred;
+    }
+
+    return sellable[0] ?? null;
+}
+
 /**
  * Pick default batch and totals for POS: FEFO among batches that actually have stock.
  * Aligns with InventoryService.allocateStock (expiry + allow_expired_sale).
