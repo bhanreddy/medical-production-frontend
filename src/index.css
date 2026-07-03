@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+/* Hover variants that only fire for a real mouse (pointer: fine).
+   Touch devices apply a sticky :hover on tap, which made the dashboard
+   quick-action cards animate when tapped while scrolling. Gating on
+   pointer: fine prevents that on touch/POS tablets. */
+@custom-variant fine-hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+@custom-variant fine-group-hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:is(:where(.group):hover *) {
+      @slot;
+    }
+  }
+}
+
 @theme {
   --color-background: rgb(var(--background));
   --color-surface: rgb(var(--surface));

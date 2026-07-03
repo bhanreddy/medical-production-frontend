@@ -3,6 +3,8 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../state/store';
 import { Badge } from '../ui/Badge';
 import { useDashboardMetrics } from '../../hooks/useDashboardMetrics';
+import { useFestivalPoster } from '../../hooks/useFestivalPoster';
+import { FestivalPosterModal } from '../FestivalPosterModal';
 import { ShoppingCart, Package, Download, Activity, AlertTriangle, Clock, Server, TrendingUp, Calendar, ArrowRight } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { DASHBOARD_COPY, DASHBOARD_QUICK_ACTIONS, METRICS_CONFIG } from '../../config/appContent';
@@ -21,6 +23,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigateById }) => {
     const { user } = useSelector((s: RootState) => s.auth);
     const { metrics, isLoading } = useDashboardMetrics();
+    const { poster, dismiss } = useFestivalPoster(user?.id);
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
@@ -55,6 +58,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateById }) => {
 
     return (
         <div className="h-full flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <FestivalPosterModal poster={poster} onDismiss={dismiss} />
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface-elevated/50 p-6 rounded-2xl border border-border/50 backdrop-blur-md">
                 <div className="flex items-center gap-6">
                     <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-primary to-primary/50 flex items-center justify-center text-on-primary shadow-lg shadow-primary/20">
@@ -100,13 +104,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateById }) => {
             <section className="flex-1 flex flex-col lg:flex-row gap-6">
                 <div
                     onClick={() => onNavigateById(primaryAction.navId)}
-                    className="flex-[2] relative overflow-hidden group cursor-pointer rounded-3xl p-10 flex flex-col justify-between transition-all duration-300 hover:shadow-2xl hover:shadow-primary/30 active:scale-[0.98] border border-border/50 bg-gradient-to-br from-surface-elevated to-surface"
+                    className="flex-[2] relative overflow-hidden group cursor-pointer rounded-3xl p-10 flex flex-col justify-between transition-all duration-300 fine-hover:shadow-2xl fine-hover:shadow-primary/30 border border-border/50 bg-gradient-to-br from-surface-elevated to-surface"
                 >
-                    <div className="absolute -inset-1 bg-gradient-to-r from-primary to-primary/50 rounded-3xl opacity-20 group-hover:opacity-40 blur-xl transition-opacity duration-500" />
-                    <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors duration-300" />
+                    <div className="absolute -inset-1 bg-gradient-to-r from-primary to-primary/50 rounded-3xl opacity-20 fine-group-hover:opacity-40 blur-xl transition-opacity duration-500" />
+                    <div className="absolute inset-0 bg-primary/5 fine-group-hover:bg-primary/10 transition-colors duration-300" />
 
                     <div className="relative z-10 flex justify-between items-start">
-                        <div className="p-4 bg-primary rounded-2xl shadow-lg shadow-primary/20 text-on-primary group-hover:scale-110 transition-transform duration-300">
+                        <div className="p-4 bg-primary rounded-2xl shadow-lg shadow-primary/20 text-on-primary fine-group-hover:scale-110 transition-transform duration-300">
                             <PrimaryIcon className="w-12 h-12" />
                         </div>
                         <kbd className="bg-surface/80 backdrop-blur px-3 py-1 rounded-md text-sm font-bold text-foreground border border-border shadow-sm flex items-center gap-1">
@@ -115,9 +119,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateById }) => {
                     </div>
 
                     <div className="relative z-10 mt-12">
-                        <h3 className="text-4xl md:text-5xl font-black text-foreground-strong tracking-tight group-hover:text-primary transition-colors flex items-center gap-3">
+                        <h3 className="text-4xl md:text-5xl font-black text-foreground-strong tracking-tight fine-group-hover:text-primary transition-colors flex items-center gap-3">
                             {primaryAction.title}
-                            <ArrowRight className="w-8 h-8 opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
+                            <ArrowRight className="w-8 h-8 opacity-0 -ml-4 fine-group-hover:opacity-100 fine-group-hover:ml-0 transition-all duration-300" />
                         </h3>
                         <p className="text-muted font-medium text-lg mt-3 flex items-center gap-2">{primaryAction.description}</p>
                     </div>
@@ -132,20 +136,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateById }) => {
                                 key={action.id}
                                 onClick={() => onNavigateById(action.navId)}
                                 className={cn(
-                                    'relative overflow-hidden bg-surface-elevated border border-border rounded-3xl p-6 flex flex-col justify-between group cursor-pointer transition-all duration-300 hover:shadow-xl active:scale-95',
-                                    isWarn ? 'hover:border-warning/50 hover:shadow-warning/10' : 'hover:border-primary/50 hover:shadow-primary/10'
+                                    'relative overflow-hidden bg-surface-elevated border border-border rounded-3xl p-6 flex flex-col justify-between group cursor-pointer transition-all duration-300 fine-hover:shadow-xl',
+                                    isWarn ? 'fine-hover:border-warning/50 fine-hover:shadow-warning/10' : 'fine-hover:border-primary/50 fine-hover:shadow-primary/10'
                                 )}
                             >
                                 <div
                                     className={cn(
-                                        'absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl -mr-16 -mt-16 transition-opacity group-hover:opacity-100 opacity-0',
+                                        'absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl -mr-16 -mt-16 transition-opacity fine-group-hover:opacity-100 opacity-0',
                                         isWarn ? 'bg-warning/10' : 'bg-primary/10'
                                     )}
                                 />
                                 <div className="relative z-10 flex justify-between items-start mb-6">
                                     <div
                                         className={cn(
-                                            'p-3 rounded-xl group-hover:scale-110 transition-transform duration-300',
+                                            'p-3 rounded-xl fine-group-hover:scale-110 transition-transform duration-300',
                                             isWarn ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'
                                         )}
                                     >
@@ -157,7 +161,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateById }) => {
                                     <h4
                                         className={cn(
                                             'text-xl font-bold text-foreground-strong transition-colors',
-                                            isWarn ? 'group-hover:text-warning' : 'group-hover:text-primary'
+                                            isWarn ? 'fine-group-hover:text-warning' : 'fine-group-hover:text-primary'
                                         )}
                                     >
                                         {action.title}
@@ -206,11 +210,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateById }) => {
 
 const KpiCard = ({ title, value, subValue, variant, icon }: any) => {
     const config = {
-        primary: { border: 'border-primary/30', bg: 'bg-primary/5', text: 'text-primary', glow: 'group-hover:shadow-primary/20' },
-        success: { border: 'border-success/30', bg: 'bg-success/5', text: 'text-success', glow: 'group-hover:shadow-success/20' },
-        warning: { border: 'border-warning/30', bg: 'bg-warning/5', text: 'text-warning', glow: 'group-hover:shadow-warning/20' },
-        danger: { border: 'border-danger/30', bg: 'bg-danger/5', text: 'text-danger', glow: 'group-hover:shadow-danger/20' },
-        neutral: { border: 'border-border', bg: 'bg-surface-elevated', text: 'text-muted', glow: 'group-hover:shadow-black/5' },
+        primary: { border: 'border-primary/30', bg: 'bg-primary/5', text: 'text-primary', glow: 'fine-group-hover:shadow-primary/20' },
+        success: { border: 'border-success/30', bg: 'bg-success/5', text: 'text-success', glow: 'fine-group-hover:shadow-success/20' },
+        warning: { border: 'border-warning/30', bg: 'bg-warning/5', text: 'text-warning', glow: 'fine-group-hover:shadow-warning/20' },
+        danger: { border: 'border-danger/30', bg: 'bg-danger/5', text: 'text-danger', glow: 'fine-group-hover:shadow-danger/20' },
+        neutral: { border: 'border-border', bg: 'bg-surface-elevated', text: 'text-muted', glow: 'fine-group-hover:shadow-black/5' },
     };
 
     const style = config[variant as keyof typeof config] || config.neutral;
@@ -218,15 +222,15 @@ const KpiCard = ({ title, value, subValue, variant, icon }: any) => {
     return (
         <div
             className={cn(
-                'relative overflow-hidden p-6 rounded-2xl border transition-all duration-300 group hover:shadow-xl hover:-translate-y-1 bg-surface-elevated',
+                'relative overflow-hidden p-6 rounded-2xl border transition-all duration-300 group fine-hover:shadow-xl fine-hover:-translate-y-1 bg-surface-elevated',
                 style.border,
                 style.glow
             )}
         >
-            <div className={cn('absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500', style.bg)} />
+            <div className={cn('absolute inset-0 opacity-0 fine-group-hover:opacity-100 transition-opacity duration-500', style.bg)} />
 
             <div className="relative z-10 flex justify-between items-start mb-4">
-                <p className="text-sm font-bold uppercase tracking-wider text-muted group-hover:text-foreground transition-colors">{title}</p>
+                <p className="text-sm font-bold uppercase tracking-wider text-muted fine-group-hover:text-foreground transition-colors">{title}</p>
                 <div className={cn('p-2 rounded-lg bg-surface', style.text)}>{icon}</div>
             </div>
 
