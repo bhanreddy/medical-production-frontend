@@ -15,9 +15,10 @@ export const BILL_PRINT_STYLES = `
   .bill-print-root p, .bill-print-root h1, .bill-print-root dl, .bill-print-root dd { margin: 0; }
   .receipt-header { text-align: center; padding-bottom: 3mm; border-bottom: 1.5px solid #000; }
   .receipt-logo { display: block; width: 11mm; height: 11mm; object-fit: contain; margin: 0 auto 2mm; filter: grayscale(1); }
+  .receipt-logo[hidden] { display: none; }
   .receipt-shop-name { font-size: 21px; font-weight: 800; line-height: 1.15; text-transform: uppercase; overflow-wrap: anywhere; }
   .receipt-owner { margin-top: 1mm !important; font-size: 10.5px; }
-  .receipt-address { margin-top: 1.5mm !important; text-wrap: pretty; }
+  .receipt-address { margin-top: 1.5mm !important; text-wrap: pretty; overflow-wrap: anywhere; }
   .receipt-phone { margin-top: 1mm !important; font-weight: 600; }
   .receipt-registration { margin-top: 1.5mm; font-size: 10px; overflow-wrap: anywhere; }
   .receipt-invoice { padding: 2.5mm 0; }
@@ -40,6 +41,7 @@ export const BILL_PRINT_STYLES = `
   .receipt-items .receipt-number { text-align: right; overflow-wrap: anywhere; }
   .receipt-item-meta { display: flex; flex-wrap: wrap; gap: .5mm 2.5mm; font-size: 10px; }
   .receipt-item-meta b { font-weight: 500; }
+  .receipt-item-meta > span { max-width: 100%; overflow-wrap: anywhere; }
   .receipt-item-details td { padding: 1mm 0 2.2mm; border-bottom: 1px dashed #000; }
   .receipt-item-details, .receipt-item-main { break-inside: avoid; }
   .receipt-item-main { break-after: avoid; }
@@ -64,5 +66,16 @@ export const BILL_PRINT_STYLES = `
   .bill-print-root--58 .receipt-grand-total strong { font-size: 21px; }
   .bill-print-root--58 .receipt-invoice-id { display: block; }
   .bill-print-root--58 .receipt-invoice-id strong { display: block; text-align: left; }
+  .bill-print-root--58 .receipt-items colgroup { display: none; }
+  .bill-print-root--58 .receipt-items thead, .bill-print-root--58 .receipt-items tbody { display: block; width: 100%; }
+  .bill-print-root--58 .receipt-items thead tr, .bill-print-root--58 .receipt-item-main { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bill-print-root--58 .receipt-items thead tr { border-top: 1px solid #000; border-bottom: 1px solid #000; }
+  .bill-print-root--58 .receipt-items th { border: 0; padding: 1mm 0; }
+  .bill-print-root--58 .receipt-items th:first-child { grid-column: 1 / -1; padding-bottom: 0; }
+  .bill-print-root--58 .receipt-item-name { grid-column: 1 / -1; font-size: 11px !important; padding-right: 0; }
+  .bill-print-root--58 .receipt-item-main td + td { padding: 1mm 0 0; white-space: nowrap; }
+  .bill-print-root--58 .receipt-items th:nth-child(2), .bill-print-root--58 .receipt-item-main td:nth-child(2) { text-align: left; }
+  .bill-print-root--58 .receipt-item-details { display: block; }
+  .bill-print-root--58 .receipt-item-details td { display: block; width: 100%; }
   @media print { .bill-print-root { margin: 0; } }
 `;
