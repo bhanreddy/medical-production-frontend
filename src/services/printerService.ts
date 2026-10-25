@@ -2,7 +2,6 @@ import api from '../lib/api';
 import type { Sale, SaleItem, ShopProfile } from '../core/types';
 import { ShopProfileService } from './shopProfileService';
 import { printBill } from '../utils/printBill';
-import { BILL_PRINT_HALF_PAGE_MAX_ITEMS } from '../components/Billing/BillPrintLayout';
 
 /**
  * PHASE 14: PRINT ENGINE
@@ -20,13 +19,21 @@ export const PrinterService = {
                 return Number.isFinite(parsed) ? parsed : fallback;
             };
 
-            const subtotal = toNumber(saleData.total_amount ?? saleData.subtotal);
-            const gstAmount = toNumber(saleData.tax_amount ?? saleData.gst_amount);
-            const discount = toNumber(saleData.discount_amount ?? saleData.discount);
+            const priceIncludesTax = saleData.price_includes_tax === true;
+            const subtotal = toNumber(saleData.subtotal ?? saleData.total_amount);
+            const gstAmount = toNumber(saleData.gst_amount ?? saleData.tax_amount);
+            const discount = toNumber(saleData.discount ?? saleData.discount_amount);
             const finalTotal = toNumber(
-                saleData.final_amount ?? saleData.net_amount,
-                Math.max(0, subtotal - discount + gstAmount),
+                saleData.net_amount ?? saleData.grand_total ?? saleData.final_amount,
+                Math.max(0, subtotal - discount + (priceIncludesTax ? 0 : gstAmount)),
             );
+            const optionalNumber = (value: unknown) => value === null || value === undefined || value === ''
+                ? undefined : Number.isFinite(Number(value)) ? Number(value) : undefined;
+            const paidAmount = optionalNumber(saleData.paid_amount);
+            const balanceDue = optionalNumber(saleData.balance_due) ?? (paidAmount === undefined ? undefined
+                : Math.max(0, Math.round((finalTotal - paidAmount) * 100) / 100));
+            const paymentModes: Record<string, string> = { CASH: 'Cash', UPI: 'UPI', CARD: 'Card', DUE: 'Credit', CREDIT: 'Credit', MIXED: 'Split payment' };
+            const paymentMode = String(saleData.payment_mode || saleData.payment_method || '').toUpperCase();
             const createdAt = saleData.created_at ? new Date(saleData.created_at) : new Date();
             const invoiceDate = Number.isNaN(createdAt.getTime()) ? new Date() : createdAt;
 
@@ -57,9 +64,9 @@ export const PrinterService = {
             }
 
             // 2. Fetch Customer if attached
-            let customerName = undefined;
-            let customerPhone = undefined;
-            if (sale.customer_id) {
+            let customerName = saleData.customers?.name;
+            let customerPhone = saleData.customers?.phone;
+            if (sale.customer_id && !customerName) {
                 try {
                     const custRes = await api.get(`/customers/${sale.customer_id}`);
                     customerName = custRes.data?.data?.name;
@@ -76,7 +83,12 @@ export const PrinterService = {
                 let expiryDate = item.medicine_batches?.expiry_date || '';
                 const quantity = toNumber(item.quantity);
                 const unitPrice = toNumber(item.unit_price ?? item.mrp ?? item.price);
-                const total = toNumber(item.total_amount ?? item.total, quantity * unitPrice);
+                const gstRate = toNumber(item.gst_rate);
+                const discountPercent = toNumber(item.discount_pct ?? item.discount_percent);
+                const lineDiscount = toNumber(item.discount_amount, quantity * unitPrice * discountPercent / 100);
+                const lineBase = Math.max(0, quantity * unitPrice - lineDiscount);
+                const total = toNumber(item.total ?? item.total_amount,
+                    Math.round(lineBase * (priceIncludesTax ? 1 : 1 + gstRate / 100) * 100) / 100);
 
                 if (!productName || !batchNumber) {
                     try {
@@ -104,23 +116,28 @@ export const PrinterService = {
                     quantity,
                     unitPrice,
                     total,
-                    gstRate: toNumber(item.gst_rate)
+                    gstRate,
+                    discountPercent,
                 };
             }));
 
             // 4. Trigger Print via Robust Utility
-            printBill({
+            await printBill({
                 shopProfile: profile,
                 customerName,
                 customerPhone,
                 invoiceNumber: saleData.invoice_number || 'Draft',
-                date: invoiceDate.toLocaleString(),
+                date: invoiceDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                time: invoiceDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
                 items: enrichedItems,
                 subtotal,
                 gstAmount,
                 discount,
                 finalTotal,
-                printHalfPage: enrichedItems.length <= BILL_PRINT_HALF_PAGE_MAX_ITEMS,
+                priceIncludesTax,
+                paymentMethod: paymentModes[paymentMode] || (paymentMode || undefined),
+                paidAmount,
+                balanceDue,
             });
 
         } catch (error) {
