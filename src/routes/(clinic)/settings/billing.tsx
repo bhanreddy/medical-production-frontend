@@ -11,14 +11,18 @@ import {
   readMerchantOrderIdFromSearchParams,
   redirectToPhonePeCheckout,
 } from '../../../payment/phonePePG';
+import { verifyPaymentOnce } from '../../../services/completePhonePeReturn';
 
 export default function BillingSettings() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currentSub, setCurrentSub] = useState<ClinicSubscription | null>(null);
   const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [paymentError, setPaymentError] = useState('');
 
   const fetchBillingData = async () => {
+    setError('');
     try {
       const [plansRes, currentRes] = await Promise.all([
         api.get('/subscriptions/plans'),
@@ -28,7 +32,7 @@ export default function BillingSettings() {
       setCurrentSub(currentRes.data.data.subscription);
       setCurrentPlan(currentRes.data.data.plan);
     } catch (err) {
-      console.error(err);
+      setError(formatPhonePeApiError(err, 'Could not load billing details. Please retry.'));
     } finally {
       setLoading(false);
     }
@@ -39,16 +43,16 @@ export default function BillingSettings() {
     const fromStorage = sessionStorage.getItem(PHONEPE_SESSION_PENDING_CLINIC)?.trim();
     const merchantOrderId = fromUrl || fromStorage;
     if (!merchantOrderId) return;
+    sessionStorage.setItem(PHONEPE_SESSION_PENDING_CLINIC, merchantOrderId);
+    setPaymentError('');
 
     try {
-      await api.post('/subscriptions/verify-payment', { merchant_order_id: merchantOrderId });
-    } catch (e: unknown) {
-      const msg = formatPhonePeApiError(e, 'Payment verification failed');
-      console.error(e);
-      alert(msg);
-    } finally {
+      await verifyPaymentOnce(merchantOrderId);
       clearPendingMerchantOrder(PHONEPE_SESSION_PENDING_CLINIC);
       window.history.replaceState({}, '', `${window.location.pathname}${window.location.hash}`);
+    } catch (e: unknown) {
+      const msg = formatPhonePeApiError(e, 'Payment verification failed');
+      setPaymentError(msg);
     }
   };
 
@@ -99,6 +103,8 @@ export default function BillingSettings() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6 animate-slideIn">
+      {error && <div role="alert" className="glass-panel p-4"><p>{error}</p><Button onClick={() => void fetchBillingData()}>Retry loading</Button></div>}
+      {paymentError && <div role="alert" className="glass-panel p-4"><p>{paymentError}</p><Button onClick={() => void verifyPendingPhonePeReturn().then(fetchBillingData)}>Retry verification</Button></div>}
       <div>
         <h1 className="text-2xl font-black text-foreground-strong tracking-tight">Billing & plans</h1>
         <p className="text-sm text-muted">Manage your subscription and billing details.</p>

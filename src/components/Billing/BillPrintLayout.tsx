@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Fragment } from 'react';
 import type { ShopProfile, Batch } from '../../core/types';
 import { BILL_PRINT_COPY, BRANDING } from '../../config/appContent';
 
@@ -6,13 +6,11 @@ interface BillItem {
     batch: Pick<Batch, 'batch_number' | 'expiry_date'>;
     productName: string;
     quantity: number;
-    unitPrice: number; // Sale Price
+    unitPrice: number;
     total: number;
     gstRate: number;
+    discountPercent?: number;
 }
-
-/** Line items at or below this count use a short (top-half A4) print layout; above uses full page height. */
-export const BILL_PRINT_HALF_PAGE_MAX_ITEMS = 4;
 
 export interface BillPrintLayoutProps {
     shopProfile: ShopProfile;
@@ -20,155 +18,129 @@ export interface BillPrintLayoutProps {
     customerPhone?: string;
     invoiceNumber: string;
     date: string;
+    time?: string;
     items: BillItem[];
     subtotal: number;
     gstAmount: number;
     discount: number;
     finalTotal: number;
-    /** When true, print styles pin the bill to the top ~half of the sheet (short receipts). */
-    printHalfPage?: boolean;
+    priceIncludesTax?: boolean;
+    paymentMethod?: string;
+    paidAmount?: number;
+    balanceDue?: number;
+    paperWidthMm?: 58 | 80;
+}
+
+const money = (amount: number) => new Intl.NumberFormat('en-IN', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+}).format(amount);
+
+function detail(value?: string): string {
+    const text = value?.trim() || '';
+    return /^(n\/?a|unknown|-)$/i.test(text) ? '' : text;
+}
+
+function expiry(value: string): string {
+    const date = /^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/.exec(value);
+    if (!date) return detail(value);
+    const parsed = new Date(date[1] + '-' + date[2] + '-' + date[3] + 'T00:00:00Z');
+    return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC',
+    });
 }
 
 export const BillPrintLayout: React.FC<BillPrintLayoutProps> = ({
-    shopProfile,
-    customerName,
-    customerPhone,
-    invoiceNumber,
-    date,
-    items,
-    subtotal,
-    gstAmount,
-    discount,
-    finalTotal,
-    printHalfPage = false,
+    shopProfile, customerName, customerPhone, invoiceNumber, date, time, items,
+    subtotal, gstAmount, discount, finalTotal, priceIncludesTax = false,
+    paymentMethod, paidAmount, balanceDue, paperWidthMm = 80,
 }) => {
+    const address = [shopProfile.address_line_1, shopProfile.address_line_2,
+        shopProfile.city, shopProfile.state, shopProfile.pincode].map(detail).filter(Boolean);
+    const addressLine = [...new Set(address)].join(', ');
+    const gstin = detail(shopProfile.gst_number);
+    const licence = detail(shopProfile.drug_license_number);
+    const owner = detail(shopProfile.owner_name);
+    const phone = detail(shopProfile.phone_number);
+    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+    const hasPayment = paidAmount !== undefined || balanceDue !== undefined || Boolean(paymentMethod);
+
     return (
-        <div
-            style={{ maxWidth: '78mm' }}
-            className={`bill-print-root font-sans text-black bg-white p-4 mx-auto leading-tight ${
-                printHalfPage ? 'bill-print-root--half' : 'bill-print-root--full'
-            }`}
-        >
-            {/* 1. HEADER (Brand Section) */}
-            <div className="text-center mb-4">
-                {shopProfile.logo_url && (
-                    <img
-                        src={shopProfile.logo_url}
-                        alt="Logo"
-                        className="max-h-[60px] mx-auto mb-2 object-contain grayscale"
-                    />
-                )}
-                {/* Brand Name - Largest, Boldest */}
-                <h1 className="text-3xl font-black uppercase mb-1 leading-none tracking-wide">
-                    {shopProfile.medical_name}
-                </h1>
-                {/* Owner Name - Subtitle */}
-                {shopProfile.owner_name && (
-                    <p className="text-sm font-medium uppercase mb-2">
-                        ({BILL_PRINT_COPY.propPrefix} {shopProfile.owner_name})
-                    </p>
-                )}
-
-                {/* Medical Details - Tightly Grouped, No Boxes */}
-                <div className="text-[10px] space-y-0.5 opacity-70">
-                    <p className="capitalize">
-                        {shopProfile.address_line_1}
-                        {shopProfile.address_line_2 && <>, {shopProfile.address_line_2}</>}
-                        - {shopProfile.pincode}
-                    </p>
-                    <p>
-                        Ph: {shopProfile.phone_number}
-                    </p>
-                    <div className="flex justify-center gap-1">
-                        <span>GSTIN: {shopProfile.gst_number}</span>
-                        <span>|</span>
-                        <span>DL: {shopProfile.drug_license_number}</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* 2. INVOICE METADATA */}
-            {/* Single Row for Inv No & Date + Separator */}
-            <div className="border-b border-black pb-1 mb-2">
-                <div className="flex justify-between items-center text-xs font-bold uppercase">
-                    <div>Inv: {invoiceNumber}</div>
-                    <div>{date}</div>
-                </div>
-                {/* Customer Row (Optional) */}
-                {(customerName || customerPhone) && (
-                    <div className="text-[10px] mt-1 text-left font-medium">
-                        {customerName && <span className="uppercase mr-2">{customerName}</span>}
-                        {customerPhone && <span>{customerPhone}</span>}
+        <article className={'bill-print-root bill-print-root--' + paperWidthMm} aria-label={'Invoice ' + invoiceNumber}>
+            <header className="receipt-header">
+                {shopProfile.logo_url && <img className="receipt-logo" src={shopProfile.logo_url} alt="" />}
+                <h1 className="receipt-shop-name">{shopProfile.medical_name}</h1>
+                {owner && <p className="receipt-owner">{BILL_PRINT_COPY.propPrefix} {owner}</p>}
+                {addressLine && <p className="receipt-address">{addressLine}</p>}
+                {phone && <p className="receipt-phone">Phone: {phone}</p>}
+                {(gstin || licence) && (
+                    <div className="receipt-registration">
+                        {gstin && <p>GSTIN: {gstin}</p>}
+                        {licence && <p>Drug licence: {licence}</p>}
                     </div>
                 )}
-            </div>
+            </header>
 
-            {/* 3. ITEM TABLE (Clean, No Dashed Boxes) */}
-            <table className="w-full text-xs mb-2">
-                <thead>
-                    <tr className="border-b border-black text-left">
-                        <th className="py-1 w-5 align-bottom">#</th>
-                        <th className="py-1 align-bottom">Item</th>
-                        <th className="py-1 text-right align-bottom w-8">Qty</th>
-                        <th className="py-1 text-right align-bottom w-10">Rate</th>
-                        <th className="py-1 text-right align-bottom w-12">Total</th>
-                    </tr>
-                </thead>
+            <section className="receipt-invoice" aria-label="Invoice details">
+                <p className="receipt-kicker">Sales invoice</p>
+                <div className="receipt-invoice-id"><span>Invoice no.</span><strong>{invoiceNumber}</strong></div>
+                <div className="receipt-date"><span>{date}</span>{time && <span>{time}</span>}</div>
+                <div className="receipt-customer">
+                    <span>Customer</span>
+                    <strong>{customerName?.trim() || (customerPhone ? 'Customer' : 'Walk-in customer')}</strong>
+                    {customerPhone && <span className="receipt-customer-phone">{customerPhone}</span>}
+                </div>
+            </section>
+
+            <table className="receipt-items" aria-label="Purchased medicines">
+                <colgroup><col className="receipt-col-item" /><col className="receipt-col-qty" /><col className="receipt-col-rate" /><col className="receipt-col-amount" /></colgroup>
+                <thead><tr><th scope="col">Medicine</th><th scope="col" className="receipt-number">Qty</th><th scope="col" className="receipt-number">Rate</th><th scope="col" className="receipt-number">Amount</th></tr></thead>
                 <tbody>
-                    {items.map((item, idx) => (
-                        <tr key={idx}>
-                            <td className="py-2 align-top text-[10px]">{idx + 1}</td>
-                            <td className="py-2 align-top pr-1">
-                                <div className="font-bold uppercase text-xs">{item.productName}</div>
-                                <div className="text-[10px] opacity-70 font-medium leading-tight mt-0.5">
-                                    Batch: {item.batch.batch_number} <br />
-                                    Exp: {item.batch.expiry_date} | GST: {item.gstRate}%
-                                </div>
-                            </td>
-                            <td className="py-2 align-top text-right font-medium">{item.quantity}</td>
-                            <td className="py-2 align-top text-right">{item.unitPrice.toFixed(2)}</td>
-                            <td className="py-2 align-top text-right font-bold">{item.total.toFixed(2)}</td>
-                        </tr>
-                    ))}
+                    {items.map((item, index) => {
+                        const batch = detail(item.batch.batch_number);
+                        const expiryDate = expiry(item.batch.expiry_date);
+                        return (
+                            <Fragment key={index}>
+                                <tr className="receipt-item-main">
+                                    <td className="receipt-item-name">{item.productName}</td>
+                                    <td className="receipt-number">{item.quantity}</td>
+                                    <td className="receipt-number">{money(item.unitPrice)}</td>
+                                    <td className="receipt-number receipt-item-amount">{money(item.total)}</td>
+                                </tr>
+                                <tr className="receipt-item-details"><td colSpan={4}>
+                                    <div className="receipt-item-meta">
+                                        {batch && <span>Batch: <b>{batch}</b></span>}
+                                        {expiryDate && <span>Exp: <b>{expiryDate}</b></span>}
+                                        <span>GST: {item.gstRate}%</span>
+                                        {Boolean(item.discountPercent && item.discountPercent > 0) && <span>Disc: {item.discountPercent}%</span>}
+                                    </div>
+                                </td></tr>
+                            </Fragment>
+                        );
+                    })}
                 </tbody>
             </table>
+            <p className="receipt-item-count">{items.length} {items.length === 1 ? 'item' : 'items'}<span>Total qty: {Number(totalQuantity.toFixed(3))}</span></p>
 
-            {/* Bottom Separator (for Items) */}
-            <div className="border-t border-black mb-2 opacity-10"></div>
+            <section className="receipt-totals" aria-label="Invoice totals">
+                <dl className="receipt-summary">
+                    <div><dt>Subtotal</dt><dd>₹{money(subtotal)}</dd></div>
+                    {discount > 0 && <div><dt>Discount</dt><dd>-₹{money(discount)}</dd></div>}
+                    <div><dt>{priceIncludesTax ? 'GST (included)' : 'GST'}</dt><dd>₹{money(gstAmount)}</dd></div>
+                </dl>
+                <div className="receipt-grand-total"><span>Total</span><strong>₹{money(finalTotal)}</strong></div>
+                {hasPayment && <dl className="receipt-payment">
+                    {paymentMethod && <div><dt>Payment</dt><dd>{paymentMethod}</dd></div>}
+                    {paidAmount !== undefined && <div><dt>Amount paid</dt><dd>₹{money(paidAmount)}</dd></div>}
+                    {balanceDue !== undefined && balanceDue > 0 && <div className="receipt-balance"><dt>Balance due</dt><dd>₹{money(balanceDue)}</dd></div>}
+                </dl>}
+            </section>
 
-            {/* 4. TOTALS SECTION (Clean, Right Aligned) */}
-            <div className="flex justify-end mb-6">
-                <div className="w-[60%] text-right space-y-1">
-                    <div className="flex justify-between text-xs">
-                        <span className="opacity-70">Subtotal</span>
-                        <span className="font-medium">₹{subtotal.toFixed(2)}</span>
-                    </div>
-                    {discount > 0 && (
-                        <div className="flex justify-between text-xs opacity-70">
-                            <span>Discount</span>
-                            <span>-₹{discount.toFixed(2)}</span>
-                        </div>
-                    )}
-                    <div className="flex justify-between text-xs">
-                        <span className="opacity-70">GST</span>
-                        <span>₹{gstAmount.toFixed(2)}</span>
-                    </div>
-
-                    {/* Grand Total - Bold, Single Line Above */}
-                    <div className="flex justify-between border-t border-black pt-2 mt-2 items-center">
-                        <span className="text-sm font-bold uppercase tracking-wider">Total</span>
-                        <span className="text-xl font-black">₹{finalTotal.toFixed(2)}</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* 5. FOOTER (Emotional + Legal) */}
-            <div className="text-center space-y-3 mt-4">
-                <p className="text-[10px] font-bold uppercase tracking-wide">{BILL_PRINT_COPY.thankYou}</p>
-                <p className="text-[8px] opacity-70 font-normal">{BILL_PRINT_COPY.returnPolicy}</p>
-                <p className="text-[10px] font-medium italic">{BILL_PRINT_COPY.closingWish}</p>
-                <p className="text-[8px] opacity-70 uppercase tracking-widest pt-2">{BRANDING.poweredByLine}</p>
-            </div>
-        </div>
+            <footer className="receipt-footer">
+                <p className="receipt-thanks">{BILL_PRINT_COPY.thankYou}</p>
+                <p className="receipt-policy">{BILL_PRINT_COPY.returnPolicy}</p>
+                <p className="receipt-wish">{BILL_PRINT_COPY.closingWish}</p>
+                <p className="receipt-powered">{BRANDING.poweredByLine}</p>
+            </footer>
+        </article>
     );
 };

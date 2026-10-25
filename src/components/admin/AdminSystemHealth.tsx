@@ -49,8 +49,8 @@ export const AdminSystemHealth = () => {
                         <div className="h-4 w-16 bg-bg-primary animate-pulse rounded" />
                     ) : (
                         <div className="flex items-center gap-2">
-                            <span className="flex h-3 w-3 rounded-full bg-success"></span>
-                            <span className="font-semibold text-lg capitalize">{health?.db || 'Connected'}</span>
+                            <span className={`flex h-3 w-3 rounded-full ${health?.db?.status === 'connected' ? 'bg-success' : 'bg-danger'}`}></span>
+                            <span className="font-semibold text-lg capitalize">{health?.db?.status || (health ? 'Unknown' : 'Unavailable')}</span>
                         </div>
                     )}
                     <p className="text-xs text-muted mt-2">Edge Connection Pool</p>

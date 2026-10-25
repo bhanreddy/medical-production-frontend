@@ -58,11 +58,11 @@ export const RegisterWizard = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <div className="auth-workspace items-center">
             <div className="w-full max-w-xl">
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-black text-accent-primary tracking-tight">Medical POS</h1>
-                    <p className="text-muted mt-2">Set up your multitenant pharmacy workspace</p>
+                    <p className="text-muted mt-2">Set up your pharmacy workspace</p>
                 </div>
 
                 {/* Progress Bar */}

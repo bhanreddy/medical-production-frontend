@@ -34,16 +34,20 @@ export const useInventoryRadar = (
         netValuation: 0,
     });
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [version, setVersion] = useState(0);
 
     const refresh = () => setVersion(v => v + 1);
 
     useEffect(() => {
+        let cancelled = false;
         const fetchInventory = async () => {
             setIsLoading(true);
+            setError(null);
             try {
                 const term = searchTerm.toLowerCase();
-                const { items: radarItems, stats: nextStats } = await buildRadarItemsWithStats();
+                const [{ items: radarItems, stats: nextStats }, disposed] = await Promise.all([buildRadarItemsWithStats(), buildDisposedBatchItems()]);
+                if (cancelled) return;
 
                 const filtered = radarItems
                     .filter(item => matchesAttentionFilter(item, attentionFilter ?? null))
@@ -54,7 +58,6 @@ export const useInventoryRadar = (
                     )
                     .sort((a, b) => b.priority - a.priority);
 
-                const disposed = await buildDisposedBatchItems();
                 const filteredDisposed = disposed.filter(
                     item =>
                         item.name.toLowerCase().includes(term) ||
@@ -65,14 +68,14 @@ export const useInventoryRadar = (
                 setDisposedItems(filteredDisposed);
                 setStats(nextStats);
             } catch (error) {
-                console.error('Inventory Radar failed', error);
+                if (!cancelled) setError(error instanceof Error ? error.message : 'Could not load inventory. Please retry.');
             } finally {
-                setIsLoading(false);
+                if (!cancelled) setIsLoading(false);
             }
         };
 
         const timer = setTimeout(fetchInventory, 300);
-        return () => clearTimeout(timer);
+        return () => { cancelled = true; clearTimeout(timer); };
     }, [searchTerm, version, attentionFilter]);
 
     return {
@@ -80,6 +83,7 @@ export const useInventoryRadar = (
         disposedItems,
         stats,
         isLoading,
+        error,
         refresh,
         viewMode,
     };

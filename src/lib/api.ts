@@ -1,20 +1,30 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import axiosRetry, { exponentialDelay, isNetworkError } from 'axios-retry';
-import { supabase } from './supabase';
+import { sessionClient } from './sessionClient';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '',
   timeout: 15000,
 });
 
-// Attach Supabase JWT to every request
-api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (session?.access_token && config.headers) {
+type SessionRequest = InternalAxiosRequestConfig & {
+  _authVersion?: number;
+  _retryAfterRefresh?: boolean;
+};
+api.interceptors.request.use(async (config: SessionRequest) => {
+  const expected = sessionClient.getVersion();
+  if (config._authVersion !== undefined && config._authVersion !== expected)
+    throw new axios.CanceledError('Session changed.');
+  const session = await sessionClient.getSession();
+  if (expected !== sessionClient.getVersion())
+    throw new axios.CanceledError('Session changed.');
+  config._authVersion = expected;
+  const clinicId = sessionStorage.getItem('impersonate_clinic_id');
+  if (clinicId) config.headers['x-impersonate-clinic'] = clinicId;
+  else delete config.headers['x-impersonate-clinic'];
+  if (session?.access_token)
     config.headers.Authorization = `Bearer ${session.access_token}`;
-  }
+  else delete config.headers.Authorization;
   return config;
 });
 
@@ -23,33 +33,43 @@ axiosRetry(api, {
   retries: 2,
   retryDelay: exponentialDelay,
   retryCondition: (error: AxiosError) => {
+    // A timed-out write may already have committed. Retry only reads automatically.
+    if (!['get', 'head', 'options'].includes(error.config?.method?.toLowerCase() || 'get')) return false;
     if (isNetworkError(error)) return true;
     const status = error.response?.status;
     if (!status) return false;
     if (status >= 400 && status < 500 && status !== 429) return false;
-    return true;
+    return status === 429 || status >= 500;
   },
 });
 
-// 401 → clear Supabase session and redirect (parity with mobile hard logout on 401)
+// Renew once, share the refresh across concurrent 401s, and keep the UI signed in on failure.
 api.interceptors.response.use(
   (res) => res,
-  async (err: AxiosError) => {
-    if (err.response?.status === 401) {
-      console.warn('Backend returned 401 Unauthorized. Auto-logout disabled to prevent login loops.');
-      // Ignore 401s from subscription or auth/me endpoints to prevent sign-out loops
-      const url = err.config?.url || '';
-      if (url.includes('/subscriptions/current') || url.includes('/auth/me')) {
-        return Promise.reject(err);
-      }
-
-      // TEMPORARY: Disabled hard logout on 401 to prevent login loops when backend auth is out of sync.
-      // await supabase.auth.signOut();
-      // if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-      //   window.location.href = '/login';
-      // }
-    }
-    return Promise.reject(err);
+  async (error: AxiosError) => {
+    const original = error.config as SessionRequest | undefined;
+    const isCredentialRequest = /\/auth\/(login|register|refresh)\/?$/.test(
+      original?.url?.split('?')[0] || '',
+    );
+    if (
+      error.response?.status !== 401 ||
+      !original ||
+      original._retryAfterRefresh ||
+      isCredentialRequest
+    )
+      return Promise.reject(error);
+    if (original._authVersion !== sessionClient.getVersion())
+      return Promise.reject(error);
+    original._retryAfterRefresh = true;
+    const token = String(original.headers.Authorization || '').replace(
+      /^Bearer /i,
+      '',
+    );
+    const session = await sessionClient.refresh(token || undefined);
+    if (original._authVersion !== sessionClient.getVersion())
+      throw new axios.CanceledError('Session changed.');
+    original.headers.Authorization = `Bearer ${session.access_token}`;
+    return api(original);
   },
 );
 

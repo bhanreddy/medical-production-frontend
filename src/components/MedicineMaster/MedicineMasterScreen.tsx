@@ -29,7 +29,7 @@ export const MedicineMasterScreen: React.FC = () => {
     const [form, setForm] = useState(emptyForm());
 
     const load = async () => {
-        const res = await api.get(`/inventory/medicines${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`);
+        const res = await api.get('/inventory/medicines', { params: { q: q.trim() || undefined } });
         setRows(res.data?.data || []);
     };
 

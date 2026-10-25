@@ -2,7 +2,7 @@ import React from 'react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
+type CardProps = React.HTMLAttributes<HTMLDivElement>;
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     ({ className, ...props }, ref) => {
@@ -10,7 +10,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
             <div
                 ref={ref}
                 className={twMerge(
-                    clsx('bg-bg-surface border border-border rounded-xl shadow-sm overflow-hidden', className)
+                    clsx('premium-card bg-surface border border-border rounded-lg shadow-[0_1px_3px_rgb(0_0_0/0.025)] overflow-hidden', className)
                 )}
                 {...props}
             />

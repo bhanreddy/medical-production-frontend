@@ -61,6 +61,25 @@ export function matchesAttentionFilter(
     return true;
 }
 
+/** The same calendar window the inventory screen uses to mark low stock and expiry. */
+export async function attentionWindow(): Promise<{ today: string; warning: string }> {
+    const expiryDaysRaw = await AppSettingsService.getString(
+        'alert_expiry_days',
+        String(RADAR_CONFIG.expiryWarningDays),
+    );
+    const expiryWarningDays = Math.max(
+        1,
+        Math.min(365, Number(expiryDaysRaw) || RADAR_CONFIG.expiryWarningDays),
+    );
+    const today = new Date();
+    const warningDate = new Date();
+    warningDate.setDate(today.getDate() + expiryWarningDays);
+    return {
+        today: today.toISOString().split('T')[0],
+        warning: warningDate.toISOString().split('T')[0],
+    };
+}
+
 /**
  * Single pass: Stock Radar rows + summary stats (Inventory page cards).
  * Expiry "warning" window uses Settings `alert_expiry_days` (same as Alerts drawer / Settings).
@@ -70,14 +89,7 @@ export async function buildRadarItemsWithStats(): Promise<{
     items: RadarItem[];
     stats: InventoryRadarStats;
 }> {
-    const expiryDaysRaw = await AppSettingsService.getString(
-        'alert_expiry_days',
-        String(RADAR_CONFIG.expiryWarningDays),
-    );
-    const expiryWarningDays = Math.max(
-        1,
-        Math.min(365, Number(expiryDaysRaw) || RADAR_CONFIG.expiryWarningDays),
-    );
+    const { today: todayStr, warning: warningStr } = await attentionWindow();
 
     // Fetch all medicines with nested medicine_batches from backend
     const res = await api.get('/inventory/medicines');
@@ -88,12 +100,6 @@ export async function buildRadarItemsWithStats(): Promise<{
     let criticalCount = 0;
     let nearExpiryCount = 0;
     let valuation = 0;
-
-    const today = new Date();
-    const warningDate = new Date();
-    warningDate.setDate(today.getDate() + expiryWarningDays);
-    const warningStr = warningDate.toISOString().split('T')[0];
-    const todayStr = today.toISOString().split('T')[0];
 
     for (const med of medicines) {
         if (med.is_active === 0 || med.is_active === false) continue;
@@ -108,7 +114,7 @@ export async function buildRadarItemsWithStats(): Promise<{
             const qty = Number(batch.quantity_remaining ?? 0);
             if (qty <= 0) continue;
 
-            const batchExpiry = batch.expiry_date || '';
+            const batchExpiry = String(batch.expiry_date || '').slice(0, 10);
             const purchaseRate = Number(batch.purchase_price ?? batch.purchase_rate ?? 0);
 
             let status: RadarItem['status'] = 'NORMAL';
@@ -174,7 +180,7 @@ export async function buildDisposedBatchItems(): Promise<DisposedBatchItem[]> {
         id: row._local_id || row.id,
         name: row.medicine_name || '—',
         batch: row.batch_number || '—',
-        expiry: row.expiry_date || '—',
+        expiry: String(row.expiry_date || '—').slice(0, 10),
         disposedAt: row.disposed_at ? String(row.disposed_at).slice(0, 10) : '—',
         disposedBy: row.disposed_by_label || '—',
         reason: row.disposal_reason || '—',

@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 export const AdminUsers = () => {
     const [search, setSearch] = useState('');
 
-    const { data: { data: users } = {}, isLoading } = useQuery({
+    const { data: { data: users } = {}, isLoading, isError, refetch } = useQuery({
         queryKey: ['admin-users'],
         queryFn: async () => {
             const { data } = await api.get('/admin/users');
@@ -19,8 +19,10 @@ export const AdminUsers = () => {
 
     const filterUsers = users?.filter((u: any) => 
         (u.full_name?.toLowerCase() || '').includes(search.toLowerCase()) || 
-        (u.email?.toLowerCase() || '').includes(search.toLowerCase())
+        (u.phone?.toLowerCase() || '').includes(search.toLowerCase())
     ) || [];
+
+    if (isError) return <div role="alert" className="p-6 space-y-4"><h1 className="text-xl font-semibold">Could not load this page</h1><p>Check your connection and try again.</p><button onClick={() => void refetch()}>Retry</button></div>;
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
@@ -37,7 +39,7 @@ export const AdminUsers = () => {
                         <Search className="absolute left-3 top-2.5 h-5 w-5 text-muted" />
                         <input
                             type="text"
-                            placeholder="Search names, emails..."
+                            placeholder="Search names, phone numbers..."
                             className="w-full bg-bg-primary border border-border rounded-lg pl-10 pr-4 py-2 focus:border-accent-primary outline-none"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
@@ -50,7 +52,7 @@ export const AdminUsers = () => {
                         <TableHeader>
                             <TableRow>
                                 <TableCell className="font-semibold px-4 py-3">Full Name</TableCell>
-                                <TableCell className="font-semibold px-4 py-3">Email</TableCell>
+                                <TableCell className="font-semibold px-4 py-3">Phone</TableCell>
                                 <TableCell className="font-semibold px-4 py-3">Clinic</TableCell>
                                 <TableCell className="font-semibold px-4 py-3">Role</TableCell>
                                 <TableCell className="font-semibold px-4 py-3">Created</TableCell>
@@ -72,10 +74,10 @@ export const AdminUsers = () => {
                             ) : filterUsers.map((u: any) => (
                                 <TableRow key={u.id} className="hover:bg-bg-primary">
                                     <TableCell className="px-4 py-3 font-medium text-foreground">{u.full_name}</TableCell>
-                                    <TableCell className="px-4 py-3 text-muted">{u.email}</TableCell>
+                                    <TableCell className="px-4 py-3 text-muted">{u.phone || '—'}</TableCell>
                                     <TableCell className="px-4 py-3 text-accent-primary">{u.clinics?.name || 'Super Admin'}</TableCell>
                                     <TableCell className="px-4 py-3"><span className="text-xs uppercase bg-bg-surface px-2 py-1 rounded border border-border text-foreground-strong">{u.role}</span></TableCell>
-                                    <TableCell className="px-4 py-3 text-muted text-sm">{format(new Date(u.created_at), 'MMM dd, yyyy')}</TableCell>
+                                    <TableCell className="px-4 py-3 text-muted text-sm">{u.created_at && !Number.isNaN(Date.parse(u.created_at)) ? format(new Date(u.created_at), 'MMM dd, yyyy') : '—'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

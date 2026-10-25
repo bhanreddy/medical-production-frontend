@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../lib/api';
+import { fetchClinicProfile, clearClinicProfileCache } from '../services/clinicProfileCache';
 
 const UPI_STORAGE_KEY = 'medpos_upi_id';
 export const UPI_ID_CHANGED_EVENT = 'medpos:upi-id-changed';
@@ -23,8 +24,8 @@ export function useUpiId() {
 
     const loadUpi = useCallback(async () => {
         try {
-            const res = await api.get('/clinics/me');
-            const vpa = String(res.data?.data?.upi_vpa ?? '').trim();
+            const profile = await fetchClinicProfile();
+            const vpa = String(profile?.upi_vpa ?? '').trim();
             if (vpa) {
                 applyUpi(vpa);
                 return;
@@ -60,6 +61,7 @@ export function useUpiId() {
     const saveUpiId = async (id: string) => {
         const trimmed = id.trim();
         await api.put('/clinics/me', { upi_vpa: trimmed });
+        clearClinicProfileCache();
         applyUpi(trimmed);
         window.dispatchEvent(new CustomEvent(UPI_ID_CHANGED_EVENT, { detail: trimmed }));
     };

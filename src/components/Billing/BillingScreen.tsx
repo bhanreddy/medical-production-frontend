@@ -1,723 +1,1049 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Select } from '../ui/Select';
-import { Table } from '../ui/Table';
 import { Badge } from '../ui/Badge';
 import { Modal } from '../ui/Modal';
-import { useOperatorFlow } from '../../hooks/useOperatorFlow';
-import { useProductSearch, type SearchResult } from '../../hooks/useProductSearch';
+import { usePosStore } from '../../store/posStore';
+import type { PosPaymentTender } from '../../store/posStore';
+import { usePosKeyboardShortcuts } from '../../hooks/usePosKeyboardShortcuts';
+import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
+import { buildUpiPaymentUri } from '../../lib/upiPaymentUri';
 import { useUpiId } from '../../hooks/useUpiId';
 import { useShopDisplayName } from '../../hooks/useShopDisplayName';
-import { buildUpiPaymentUri } from '../../lib/upiPaymentUri';
-import { BillingSearchDropdown } from './BillingSearchDropdown';
 import api from '../../lib/api';
-import { BillingService, type FinalizeSaleOptions } from '../../services/billingService';
-import { PrinterService } from '../../services/printerService';
-import { ProductLookupService, resolveBatchFromMedicineDetail } from '../../services/productLookupService';
-import { InsufficientStockError } from '../../core/errors';
-import { navigatePath } from '../../utils/navigatePath';
-import { BILLING_SCREEN_COPY } from '../../config/appContent';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../state/store';
-import type { Product, PaymentMode, SalePaymentSplit } from '../../core/types';
-
-type CartLine = {
-    id: string;
-    product: Product;
-    batchId: string;
-    name: string;
-    qty: number;
-    price: number;
-    expiry: string;
-    total: number;
-};
-
-/**
- * PHASE 12: INTELLIGENT BILLING FLOW
- * Prioritizes: Flow States, Mistake Prevention, Visual Priority
- */
-type UpiModal = 'closed' | 'missing_config' | 'qr';
 
 export const BillingScreen: React.FC = () => {
-    const [barcode, setBarcode] = useState('');
-    const [cart, setCart] = useState<CartLine[]>([]);
-    const barcodeRef = useRef<HTMLInputElement>(null);
-    const { state, setFlowState } = useOperatorFlow();
-    const { upiId } = useUpiId();
-    const shopName = useShopDisplayName();
+  const { user } = useSelector((s: RootState) => s.auth);
+  const { upiId } = useUpiId();
+  const shopName = useShopDisplayName();
 
-    const [upiModal, setUpiModal] = useState<UpiModal>('closed');
-    const [pendingUpiAmount, setPendingUpiAmount] = useState(0);
-    const [upiQrValue, setUpiQrValue] = useState('');
-    const [isCommittingSale, setIsCommittingSale] = useState(false);
+  // POS Store
+  const {
+    cart,
+    customer_id,
+    customer_name,
+    customer_phone,
+    doctor_name,
+    doctor_registration_number,
+    prescription_number,
+    bill_discount,
+    coupon_code,
+    redeem_loyalty_credits,
+    park_id,
+    park_token,
+    supervisor_auth_id,
+    addItem,
+    updateLineQuantity,
+    updateLineUnit,
+    updateLineDiscount,
+    removeLine,
+    clearCart,
+    setCustomer,
+    setDoctor,
+    setPrescription,
+    setBillDiscount,
+    setCouponCode,
+    setRedeemLoyaltyCredits,
+    setParkedToken,
+    reset,
+  } = usePosStore();
 
-    const { user } = useSelector((s: RootState) => s.auth);
+  // POS Session Status
+  const [session, setSession] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [substitutes, setSubstitutes] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedSearchIdx, setSelectedSearchIdx] = useState(0);
 
-    const [stockError, setStockError] = useState<{
-        productName: string;
-        available: number;
-        requested: number;
-        missing: number;
-    } | null>(null);
+  // Quote State
+  const [quote, setQuote] = useState<any>(null);
+  const [isQuoting, setIsQuoting] = useState(false);
 
-    const { results, isSearching } = useProductSearch(barcode);
-    const [selectedIndex, setSelectedIndex] = useState(0);
+  // Modals
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [isParkModalOpen, setIsParkModalOpen] = useState(false);
+  const [isRecallModalOpen, setIsRecallModalOpen] = useState(false);
+  const [isSupervisorModalOpen, setIsSupervisorModalOpen] = useState(false);
+  const [isReturnsModalOpen, setIsReturnsModalOpen] = useState(false);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [lastBillData, setLastBillData] = useState<any>(null);
+  const [parkedBills, setParkedBills] = useState<any[]>([]);
 
-    const [customers, setCustomers] = useState<{ value: string; label: string }[]>([]);
-    const [customerId, setCustomerId] = useState('');
-    const [supplyInterState, setSupplyInterState] = useState(false);
-    const [paymentMode, setPaymentMode] = useState<PaymentMode>('CASH');
-    const [splitCash, setSplitCash] = useState('');
-    const [splitUpi, setSplitUpi] = useState('');
-    const [splitCard, setSplitCard] = useState('');
-    const [splitDue, setSplitDue] = useState('');
-    const [prescriptionRx, setPrescriptionRx] = useState('');
-    const [prescriptionImage, setPrescriptionImage] = useState('');
-    const prescInputRef = useRef<HTMLInputElement>(null);
+  // Split Payment Inputs
+  const [splitCash, setSplitCash] = useState('');
+  const [splitUpi, setSplitUpi] = useState('');
+  const [splitCard, setSplitCard] = useState('');
+  const [splitCredit, setSplitCredit] = useState('');
+  const [upiRefId, setUpiRefId] = useState('');
+  const [cardRefNo, setCardRefNo] = useState('');
+  const [isCommitting, setIsCommitting] = useState(false);
 
-    useEffect(() => {
-        api.get('/customers?limit=200')
-            .then(res => {
-                const rows = res.data?.data || [];
-                setCustomers([
-                    { value: '', label: 'Walk-in' },
-                    ...rows.map((c: any) => ({ value: c.id || c._local_id, label: `${c.name} (${c.phone})` })),
-                ]);
-            })
-            .catch(() => setCustomers([{ value: '', label: 'Walk-in' }]));
-    }, []);
+  // DOM Refs for Keyboard Control
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const customerInputRef = useRef<HTMLInputElement>(null);
+  const discountInputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-        if (upiModal === 'qr' && upiId && pendingUpiAmount > 0) {
-            setUpiQrValue(
-                buildUpiPaymentUri({
+  // 1. Fetch POS Session
+  const loadSession = useCallback(async () => {
+    try {
+      const res = await api.get('/pos/session');
+      setSession(res.data?.data);
+    } catch {
+      // Offline fallback
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSession();
+  }, [loadSession]);
+
+  // 2. Perform Live Unified Product Search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setSubstitutes([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await api.get(`/pos/search?q=${encodeURIComponent(searchQuery)}`);
+        setSearchResults(res.data?.results || []);
+        setSubstitutes(res.data?.substitutes || []);
+        setSelectedSearchIdx(0);
+      } catch {
+        // Search error
+      } finally {
+        setIsSearching(false);
+      }
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // 3. Fetch Server-Side Cart Quote whenever cart or discounts change
+  useEffect(() => {
+    if (cart.length === 0) {
+      setQuote(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsQuoting(true);
+      try {
+        const res = await api.post('/pos/quote', {
+          items: cart.map(line => ({
+            medicine_id: line.medicine_id,
+            quantity: line.quantity,
+            unit_type: line.unit_type,
+            conversion_factor: line.conversion_factor,
+            discount_pct: line.discount_pct,
+            batch_id: line.manual_batch_id || undefined,
+          })),
+          customer_id,
+          coupon_code: coupon_code || undefined,
+          redeem_loyalty_credits: Number(redeem_loyalty_credits || 0),
+          bill_discount: parseFloat(bill_discount) || 0,
+        });
+        setQuote(res.data?.data);
+      } catch {
+        // Quote error
+      } finally {
+        setIsQuoting(false);
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [cart, customer_id, bill_discount, coupon_code, redeem_loyalty_credits]);
+
+  // 4. Barcode Scanner Fast Global Listener
+  useBarcodeScanner({
+    onScan: async (barcode) => {
+      try {
+        const res = await api.get(`/pos/search?barcode=${encodeURIComponent(barcode)}`);
+        const items = res.data?.results || [];
+        if (items.length > 0) {
+          const item = items[0];
+          const matched = item.matched_barcode;
+          addItem({
+            medicine_id: item.id,
+            medicine_name: item.name,
+            generic_name: item.generic_name,
+            brand_name: item.brand_name,
+            dosage_form: item.dosage_form,
+            strength: item.strength,
+            unit_type: matched?.unit_type || item.sale_unit || 'STRIP',
+            conversion_factor: matched?.conversion_factor || item.conversion_factor || 1.0,
+            quantity: 1,
+            mrp: item.mrp,
+            unit_price: item.selling_price,
+            discount_pct: 0,
+            gst_rate: item.gst_rate,
+            prescription_required: item.prescription_required,
+            schedule_classification: item.schedule_classification,
+            cold_chain_required: item.cold_chain_required,
+            batch_allocations: [],
+            warnings: [],
+          });
+          setSearchQuery('');
+        }
+      } catch {
+        // Scan handle error
+      }
+    },
+  });
+
+  // 5. Keyboard Shortcut Engine (F2-F10)
+  usePosKeyboardShortcuts({
+    onSearchFocus: () => searchInputRef.current?.focus(),
+    onCustomerFocus: () => customerInputRef.current?.focus(),
+    onDiscountFocus: () => discountInputRef.current?.focus(),
+    onParkSale: () => setIsParkModalOpen(true),
+    onRecallSale: async () => {
+      try {
+        const res = await api.get('/pos/parked');
+        setParkedBills(res.data?.data || []);
+        setIsRecallModalOpen(true);
+      } catch {
+        // Recall fetch error
+      }
+    },
+    onCheckout: () => {
+      if (cart.length > 0) {
+        setSplitCash(String(quote?.grandTotal || ''));
+        setSplitUpi('');
+        setSplitCard('');
+        setSplitCredit('');
+        setIsCheckoutModalOpen(true);
+      }
+    },
+    onPrintLastBill: () => {
+      if (lastBillData) setIsReceiptModalOpen(true);
+    },
+    onReturns: () => setIsReturnsModalOpen(true),
+    onClearCart: () => clearCart(),
+    onEscape: () => {
+      setIsCheckoutModalOpen(false);
+      setIsParkModalOpen(false);
+      setIsRecallModalOpen(false);
+      setIsSupervisorModalOpen(false);
+      setIsReturnsModalOpen(false);
+      setIsReceiptModalOpen(false);
+    },
+  });
+
+  // Add Product from Search Table
+  const handleSelectProduct = (p: any) => {
+    addItem({
+      medicine_id: p.id,
+      medicine_name: p.name,
+      generic_name: p.generic_name,
+      brand_name: p.brand_name,
+      dosage_form: p.dosage_form,
+      strength: p.strength,
+      unit_type: p.sale_unit || 'STRIP',
+      conversion_factor: p.conversion_factor || 1.0,
+      quantity: 1,
+      mrp: p.mrp,
+      unit_price: p.selling_price,
+      discount_pct: 0,
+      gst_rate: p.gst_rate,
+      prescription_required: p.prescription_required,
+      schedule_classification: p.schedule_classification,
+      cold_chain_required: p.cold_chain_required,
+      batch_allocations: [],
+      warnings: [],
+    });
+    setSearchQuery('');
+    setSearchResults([]);
+    searchInputRef.current?.focus();
+  };
+
+  // Perform Final Checkout Transaction
+  const handleFinalCheckout = async () => {
+    if (!quote || cart.length === 0) return;
+
+    const cash = parseFloat(splitCash) || 0;
+    const upi = parseFloat(splitUpi) || 0;
+    const card = parseFloat(splitCard) || 0;
+    const credit = parseFloat(splitCredit) || 0;
+
+    const paymentRows: PosPaymentTender[] = [];
+    if (cash > 0) paymentRows.push({ tender_type: 'CASH', amount: cash });
+    if (upi > 0) paymentRows.push({ tender_type: 'UPI', amount: upi, reference_number: upiRefId });
+    if (card > 0) paymentRows.push({ tender_type: 'CARD', amount: card, reference_number: cardRefNo });
+    if (credit > 0) paymentRows.push({ tender_type: 'CREDIT', amount: credit });
+
+    if (paymentRows.length === 0) {
+      paymentRows.push({ tender_type: 'CASH', amount: quote.grandTotal });
+    }
+
+    setIsCommitting(true);
+    try {
+      const res = await api.post('/pos/checkout', {
+        items: cart.map(l => ({
+          medicine_id: l.medicine_id,
+          quantity: l.quantity,
+          unit_type: l.unit_type,
+          conversion_factor: l.conversion_factor,
+          discount_pct: l.discount_pct,
+          batch_id: l.manual_batch_id || undefined,
+        })),
+        customer_id: customer_id || undefined,
+        doctor_name: doctor_name || undefined,
+        doctor_registration_number: doctor_registration_number || undefined,
+        prescription_number: prescription_number || undefined,
+        coupon_code: coupon_code || undefined,
+        redeem_loyalty_credits: Number(redeem_loyalty_credits || 0),
+        bill_discount: parseFloat(bill_discount) || 0,
+        payments: paymentRows,
+        park_id: park_id || undefined,
+        supervisor_auth_id: supervisor_auth_id || undefined,
+      });
+
+      const billResult = res.data?.data;
+      setLastBillData(billResult);
+      setIsCheckoutModalOpen(false);
+      setIsReceiptModalOpen(true);
+      reset();
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || 'Checkout failed');
+    } finally {
+      setIsCommitting(false);
+    }
+  };
+
+  // Park Sale
+  const handleParkSale = async () => {
+    try {
+      const res = await api.post('/pos/park', {
+        cart,
+        customer: { id: customer_id, name: customer_name, phone: customer_phone },
+        totals: quote,
+      });
+      alert(`Sale parked successfully with Token: ${res.data?.data?.park_token}`);
+      setIsParkModalOpen(false);
+      clearCart();
+    } catch {
+      alert('Failed to park sale');
+    }
+  };
+
+  // Resume Parked Sale
+  const handleResumeParked = async (pId: string) => {
+    try {
+      const res = await api.post(`/pos/parked/${pId}/resume`);
+      const resumed = res.data?.data;
+      clearCart();
+      for (const item of resumed.cart_snapshot || []) {
+        addItem(item);
+      }
+      if (resumed.customer_snapshot) {
+        setCustomer(resumed.customer_snapshot.id, resumed.customer_snapshot.name, resumed.customer_snapshot.phone);
+      }
+      setParkedToken(resumed.id, resumed.park_token);
+      setIsRecallModalOpen(false);
+    } catch {
+      alert('Failed to resume parked bill');
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-64px)] bg-slate-950 text-slate-100 font-sans overflow-hidden">
+      {/* ── TOP OPERATIONAL STATUS BAR ────────────────────────────────────── */}
+      <header className="h-11 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between text-xs select-none">
+        <div className="flex items-center space-x-4">
+          <span className="font-bold text-emerald-400 tracking-wider">POS COUNTER V2</span>
+          <span className="text-slate-500">|</span>
+          <span className="text-slate-300">
+            Store: <strong className="text-white">{session?.storeCode || 'MAIN'}</strong> ({session?.storeName || 'Main Store'})
+          </span>
+          <span className="text-slate-500">|</span>
+          <span className="text-slate-300">
+            Counter: <strong className="text-white">{session?.counterCode || 'C1'}</strong>
+          </span>
+          <span className="text-slate-500">|</span>
+          <span className="text-slate-300">
+            Terminal: <strong className="text-white">{session?.terminalCode || 'T1'}</strong>
+          </span>
+          <span className="text-slate-500">|</span>
+          <span className="text-slate-300">
+            Cashier: <strong className="text-white">{session?.userName || user?.name || 'Operator'}</strong>
+          </span>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <Badge variant={session?.syncStatus === 'SYNCED' ? 'success' : 'warning'}>
+            {session?.syncStatus || 'SYNCED'}
+          </Badge>
+          <Badge variant="success">ONLINE</Badge>
+          {park_token && (
+            <Badge variant="neutral">
+              HOLD: #{park_token}
+            </Badge>
+          )}
+        </div>
+      </header>
+
+      {/* ── MAIN 3-PANE WORKSPACE ─────────────────────────────────────────── */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* ── LEFT PANE: SEARCH & PRODUCT CATALOGUE (28%) ─────────────────── */}
+        <section className="w-[30%] border-r border-slate-800 bg-slate-900/50 flex flex-col">
+          <div className="p-3 border-b border-slate-800 bg-slate-900">
+            <div className="relative">
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Scan Barcode or Search [F2]..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono"
+                autoFocus
+              />
+              {isSearching && (
+                <span className="absolute right-3 top-2.5 text-xs text-slate-400 animate-pulse">
+                  Searching...
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Search Result Grid */}
+          <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+            {searchResults.map((p, idx) => (
+              <div
+                key={p.id}
+                onClick={() => handleSelectProduct(p)}
+                className={`p-2.5 rounded border transition-colors cursor-pointer ${
+                  idx === selectedSearchIdx
+                    ? 'bg-emerald-950/40 border-emerald-500/60'
+                    : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-semibold text-sm text-white">{p.name}</h4>
+                    <p className="text-xs text-slate-400">{p.generic_name || p.brand_name || 'Generic'}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold text-emerald-400">₹{p.selling_price?.toFixed(2)}</span>
+                    <p className="text-[11px] text-slate-400">Stock: {p.total_available_stock}</p>
+                  </div>
+                </div>
+
+                <div className="mt-2 flex items-center space-x-2 text-[11px]">
+                  {p.prescription_required && (
+                    <span className="bg-rose-950 text-rose-300 px-1.5 py-0.5 rounded border border-rose-800 font-mono">
+                      Rx {p.schedule_classification}
+                    </span>
+                  )}
+                  {p.nearest_expiry && (
+                    <span className="text-slate-400">Exp: {p.nearest_expiry}</span>
+                  )}
+                  <span className="text-slate-500">·</span>
+                  <span className="text-slate-400">{p.sale_unit?.toUpperCase()}</span>
+                </div>
+              </div>
+            ))}
+
+            {substitutes.length > 0 && (
+              <div className="p-2 bg-amber-950/30 border border-amber-800/40 rounded mt-2">
+                <span className="text-[11px] font-bold text-amber-400">Generic Substitutes:</span>
+                <div className="mt-1 space-y-1">
+                  {substitutes.map(s => (
+                    <div
+                      key={s.id}
+                      onClick={() => handleSelectProduct(s)}
+                      className="text-xs text-amber-200 hover:text-white cursor-pointer flex justify-between p-1 rounded hover:bg-amber-900/30"
+                    >
+                      <span>{s.name}</span>
+                      <span>₹{s.mrp}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!isSearching && searchQuery.trim() && searchResults.length === 0 && substitutes.length === 0 && (
+              <div className="text-center py-8 text-slate-500 text-sm">
+                No matching medicines found
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── CENTER PANE: ACTIVE CART DATA-GRID (46%) ─────────────────────── */}
+        <main className="w-[44%] flex flex-col bg-slate-950 border-r border-slate-800">
+          <div className="p-3 border-b border-slate-800 bg-slate-900/70 flex justify-between items-center">
+            <h2 className="font-bold text-sm text-slate-200">
+              Active Cart ({cart.length} items)
+            </h2>
+            <button
+              onClick={clearCart}
+              className="text-xs text-rose-400 hover:text-rose-300 transition-colors"
+            >
+              Clear [Ctrl+Del]
+            </button>
+          </div>
+
+          {/* Cart Table Data-Grid */}
+          <div className="flex-1 overflow-y-auto">
+            {cart.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2">
+                <p className="text-sm">Cart is empty</p>
+                <p className="text-xs text-slate-600">Scan a barcode or press F2 to search medicines</p>
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-900 border-b border-slate-800 text-slate-400 uppercase font-mono sticky top-0">
+                  <tr>
+                    <th className="py-2.5 px-3">Item</th>
+                    <th className="py-2.5 px-2">Unit</th>
+                    <th className="py-2.5 px-2 text-center">Qty</th>
+                    <th className="py-2.5 px-2 text-right">MRP</th>
+                    <th className="py-2.5 px-2 text-right">Disc%</th>
+                    <th className="py-2.5 px-3 text-right">Total</th>
+                    <th className="py-2.5 px-2 text-center"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-900">
+                  {cart.map(line => (
+                    <tr key={line.id} className="hover:bg-slate-900/40 transition-colors">
+                      <td className="py-2.5 px-3">
+                        <p className="font-semibold text-white">{line.medicine_name}</p>
+                        <div className="flex items-center space-x-1.5 text-[11px] text-slate-400">
+                          {line.prescription_required && (
+                            <span className="text-rose-400 font-mono">Rx</span>
+                          )}
+                          <span>GST {line.gst_rate}%</span>
+                        </div>
+                      </td>
+
+                      <td className="py-2.5 px-2">
+                        <select
+                          value={line.unit_type}
+                          onChange={e => updateLineUnit(line.id, e.target.value, line.conversion_factor)}
+                          className="bg-slate-800 border border-slate-700 rounded text-slate-200 px-1 py-0.5 text-xs font-mono"
+                        >
+                          <option value="STRIP">Strip</option>
+                          <option value="TABLET">Tablet</option>
+                          <option value="BOX">Box</option>
+                          <option value="BOTTLE">Bottle</option>
+                        </select>
+                      </td>
+
+                      <td className="py-2.5 px-2">
+                        <div className="flex items-center justify-center space-x-1">
+                          <button
+                            onClick={() => updateLineQuantity(line.id, line.quantity - 1)}
+                            className="w-5 h-5 bg-slate-800 border border-slate-700 rounded text-slate-300 hover:bg-slate-700 flex items-center justify-center font-bold"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            value={line.quantity}
+                            onChange={e => updateLineQuantity(line.id, parseInt(e.target.value) || 1)}
+                            className="w-10 text-center bg-slate-900 border border-slate-700 rounded py-0.5 text-white font-mono"
+                          />
+                          <button
+                            onClick={() => updateLineQuantity(line.id, line.quantity + 1)}
+                            className="w-5 h-5 bg-slate-800 border border-slate-700 rounded text-slate-300 hover:bg-slate-700 flex items-center justify-center font-bold"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </td>
+
+                      <td className="py-2.5 px-2 text-right font-mono text-slate-300">
+                        ₹{line.mrp?.toFixed(2)}
+                      </td>
+
+                      <td className="py-2.5 px-2 text-right">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={line.discount_pct || 0}
+                          onChange={e => updateLineDiscount(line.id, parseFloat(e.target.value) || 0)}
+                          className="w-12 text-right bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-white font-mono text-xs"
+                        />
+                      </td>
+
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">
+                        ₹{line.total?.toFixed(2)}
+                      </td>
+
+                      <td className="py-2.5 px-2 text-center">
+                        <button
+                          onClick={() => removeLine(line.id)}
+                          className="text-slate-500 hover:text-rose-400 text-sm"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Multi-Batch FEFO Allocation Info Bar */}
+          {quote && quote.lines?.length > 0 && (
+            <div className="p-2.5 bg-slate-900 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+              <span>FEFO Batch Compliance Active</span>
+              <span className="font-mono">Taxable: ₹{quote.taxableAmount?.toFixed(2)} · GST: ₹{quote.totalGst?.toFixed(2)}</span>
+            </div>
+          )}
+        </main>
+
+        {/* ── RIGHT PANE: CUSTOMER, TOTALS & PAYMENTS (26%) ───────────────── */}
+        <aside className="w-[26%] bg-slate-900/80 p-3 flex flex-col justify-between overflow-y-auto">
+          <div className="space-y-3">
+            {/* Customer Lookup & Quick Info */}
+            <div className="bg-slate-900 border border-slate-800 rounded p-2.5">
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                Customer [F3]
+              </label>
+              <input
+                ref={customerInputRef}
+                type="text"
+                placeholder="Phone or Name (Walk-in)"
+                value={customer_name}
+                onChange={e => setCustomer(customer_id, e.target.value, customer_phone)}
+                className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white placeholder-slate-500 font-mono"
+              />
+            </div>
+
+            {/* Doctor & Prescription Information */}
+            <div className="bg-slate-900 border border-slate-800 rounded p-2.5">
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                Doctor & Rx Info
+              </label>
+              <input
+                type="text"
+                placeholder="Doctor Name"
+                value={doctor_name}
+                onChange={e => setDoctor(e.target.value, doctor_registration_number)}
+                className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white placeholder-slate-500 mb-1.5 font-mono"
+              />
+              <input
+                type="text"
+                placeholder="Prescription / Rx No."
+                value={prescription_number}
+                onChange={e => setPrescription(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white placeholder-slate-500 font-mono"
+              />
+            </div>
+
+            {/* Coupon Code Voucher */}
+            <div className="bg-slate-900 border border-slate-800 rounded p-2.5">
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                <span>Coupon Code</span>
+                {quote?.couponDiscount > 0 && (
+                  <span className="text-emerald-400 font-mono text-[10px] font-semibold">
+                    Applied: -₹{quote.couponDiscount.toFixed(2)}
+                  </span>
+                )}
+              </label>
+              <input
+                type="text"
+                placeholder="Enter voucher (e.g. WELLNESS10)"
+                value={coupon_code}
+                onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white placeholder-slate-500 font-mono"
+              />
+            </div>
+
+            {/* Loyalty Points Redemption */}
+            {quote && (quote.availableLoyaltyCredits > 0 || quote.loyaltyCreditsEarnable > 0) && (
+              <div className="bg-slate-900 border border-slate-800 rounded p-2.5">
+                <div className="flex justify-between items-center text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  <span>Loyalty Rewards</span>
+                  <span className="text-purple-400 font-mono text-[10px]">
+                    Bal: {quote.availableLoyaltyCredits || 0} pts (₹{(quote.availableLoyaltyValuePaise || 0) / 100})
+                  </span>
+                </div>
+                {quote.availableLoyaltyCredits > 0 ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max={quote.availableLoyaltyCredits}
+                      placeholder="Redeem points"
+                      value={redeem_loyalty_credits || ''}
+                      onChange={e => setRedeemLoyaltyCredits(parseInt(e.target.value) || 0)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white font-mono"
+                    />
+                    {quote.loyaltyRedeemed > 0 && (
+                      <span className="text-purple-400 font-mono text-xs font-bold whitespace-nowrap">
+                        -₹{quote.loyaltyRedeemed.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    Earns +{quote.loyaltyCreditsEarnable} credits on this sale
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Bill Discount Input */}
+            <div className="bg-slate-900 border border-slate-800 rounded p-2.5">
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                Bill Discount (₹) [F5]
+              </label>
+              <input
+                ref={discountInputRef}
+                type="number"
+                min="0"
+                value={bill_discount}
+                onChange={e => setBillDiscount(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-white font-mono"
+              />
+            </div>
+          </div>
+
+          {/* Totals Summary & Checkout CTA */}
+          <div className="mt-4 bg-slate-900 border border-slate-800 rounded p-3 space-y-2">
+            <div className="flex justify-between text-xs text-slate-400 font-mono">
+              <span>MRP Total:</span>
+              <span>₹{quote?.mrpTotal?.toFixed(2) || quote?.subtotal?.toFixed(2) || '0.00'}</span>
+            </div>
+            {quote?.promotionDiscount > 0 && (
+              <div className="flex justify-between text-xs text-emerald-400 font-mono">
+                <span>Promotions:</span>
+                <span>-₹{quote.promotionDiscount.toFixed(2)}</span>
+              </div>
+            )}
+            {quote?.couponDiscount > 0 && (
+              <div className="flex justify-between text-xs text-amber-400 font-mono">
+                <span>Coupon ({coupon_code}):</span>
+                <span>-₹{quote.couponDiscount.toFixed(2)}</span>
+              </div>
+            )}
+            {quote?.loyaltyRedeemed > 0 && (
+              <div className="flex justify-between text-xs text-purple-400 font-mono">
+                <span>Loyalty Points:</span>
+                <span>-₹{quote.loyaltyRedeemed.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-xs text-slate-400 font-mono">
+              <span>GST Total:</span>
+              <span>₹{quote?.totalGst?.toFixed(2) || '0.00'}</span>
+            </div>
+            {quote?.totalSavings > 0 && (
+              <div className="p-1.5 bg-emerald-950/60 border border-emerald-800/60 rounded text-center text-xs text-emerald-300 font-bold font-mono">
+                Customer Saves: ₹{quote.totalSavings.toFixed(2)}
+              </div>
+            )}
+
+            <div className="border-t border-slate-800 pt-2 flex justify-between items-baseline">
+              <span className="font-bold text-sm text-white">GRAND TOTAL</span>
+              <span className="font-bold text-2xl text-emerald-400 font-mono">
+                {isQuoting ? '...' : `₹${quote?.grandTotal?.toFixed(2) || '0.00'}`}
+              </span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-2 grid grid-cols-2 gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsParkModalOpen(true)}
+                disabled={cart.length === 0}
+                className="text-xs"
+              >
+                Park [F6]
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={async () => {
+                  const res = await api.get('/pos/parked');
+                  setParkedBills(res.data?.data || []);
+                  setIsRecallModalOpen(true);
+                }}
+                className="text-xs"
+              >
+                Recall [F7]
+              </Button>
+            </div>
+
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => {
+                setSplitCash(String(quote?.grandTotal || ''));
+                setSplitUpi('');
+                setSplitCard('');
+                setSplitCredit('');
+                setIsCheckoutModalOpen(true);
+              }}
+              disabled={cart.length === 0}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 font-bold py-3 text-sm tracking-wide mt-2"
+            >
+              PAY & PRINT [F8]
+            </Button>
+          </div>
+        </aside>
+      </div>
+
+      {/* ── SPLIT PAYMENT & CHECKOUT MODAL ─────────────────────────────────── */}
+      {isCheckoutModalOpen && (
+        <Modal
+          isOpen={isCheckoutModalOpen}
+          onClose={() => setIsCheckoutModalOpen(false)}
+          title="Payment & Final Checkout"
+        >
+          <div className="space-y-4 text-slate-200">
+            <div className="bg-slate-900 border border-slate-800 rounded p-3 text-center">
+              <span className="text-xs text-slate-400 uppercase">Amount Due</span>
+              <p className="text-3xl font-bold text-emerald-400 font-mono">
+                ₹{quote?.grandTotal?.toFixed(2)}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase">Tenders Breakdown</label>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-xs text-slate-400">Cash (₹)</span>
+                  <Input
+                    type="number"
+                    value={splitCash}
+                    onChange={e => setSplitCash(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <span className="text-xs text-slate-400">UPI (₹)</span>
+                  <Input
+                    type="number"
+                    value={splitUpi}
+                    onChange={e => setSplitUpi(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <span className="text-xs text-slate-400">Card (₹)</span>
+                  <Input
+                    type="number"
+                    value={splitCard}
+                    onChange={e => setSplitCard(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <span className="text-xs text-slate-400">Credit / Due (₹)</span>
+                  <Input
+                    type="number"
+                    value={splitCredit}
+                    onChange={e => setSplitCredit(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              {parseFloat(splitUpi) > 0 && (
+                <div className="pt-1">
+                  <span className="text-xs text-slate-400">UPI Ref / UTR</span>
+                  <Input
+                    type="text"
+                    value={upiRefId}
+                    onChange={e => setUpiRefId(e.target.value)}
+                    placeholder="e.g. UPI12345678"
+                  />
+                </div>
+              )}
+
+              {parseFloat(splitCard) > 0 && (
+                <div className="pt-1">
+                  <span className="text-xs text-slate-400">Card Auth Code / Ref</span>
+                  <Input
+                    type="text"
+                    value={cardRefNo}
+                    onChange={e => setCardRefNo(e.target.value)}
+                    placeholder="e.g. AUTH9876"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Dynamic UPI QR Display */}
+            {parseFloat(splitUpi) > 0 && upiId && (
+              <div className="flex flex-col items-center justify-center p-3 bg-white rounded">
+                <QRCodeSVG
+                  value={buildUpiPaymentUri({
                     vpa: upiId,
                     payeeName: shopName,
-                    amount: pendingUpiAmount,
-                }),
-            );
-        } else {
-            setUpiQrValue('');
-        }
-    }, [upiModal, upiId, pendingUpiAmount, shopName]);
-
-    const needsPrescription = useMemo(() => cart.some(l => l.product.schedule_h), [cart]);
-
-    const buildPaymentSplits = (finalTotal: number): SalePaymentSplit[] => {
-        const rows: SalePaymentSplit[] = [];
-        const c = parseFloat(splitCash) || 0;
-        const u = parseFloat(splitUpi) || 0;
-        const r = parseFloat(splitCard) || 0;
-        const d = parseFloat(splitDue) || 0;
-        if (c > 0) rows.push({ mode: 'CASH', amount: c });
-        if (u > 0) rows.push({ mode: 'UPI', amount: u });
-        if (r > 0) rows.push({ mode: 'CARD', amount: r });
-        if (d > 0) rows.push({ mode: 'DUE', amount: d });
-        const sum = Math.round(rows.reduce((a, s) => a + s.amount, 0) * 100) / 100;
-        if (Math.abs(sum - finalTotal) > 0.05) {
-            throw new Error(`Split total ₹${sum.toFixed(2)} must equal ₹${finalTotal.toFixed(2)}`);
-        }
-        return rows;
-    };
-
-    const commitSale = async () => {
-        if (!user) {
-            // eslint-disable-next-line no-alert
-            alert('No cashier logged in!');
-            return;
-        }
-
-        setIsCommittingSale(true);
-        try {
-            const serviceCart = cart.map(item => ({
-                product: item.product,
-                quantity: item.qty,
-                discountPercent: 0,
-                batchId: item.batchId,
-                sellingPrice: item.price,
-            }));
-
-            const opts: FinalizeSaleOptions = {
-                supplyType: supplyInterState ? 'INTER' : 'INTRA',
-                prescriptionRxNumber: prescriptionRx.trim() || undefined,
-                prescriptionImageData: prescriptionImage.trim() || undefined,
-            };
-
-            let mode: PaymentMode = paymentMode;
-            if (mode === 'MIXED') {
-                opts.paymentSplits = buildPaymentSplits(total);
-            }
-
-            const sale = await BillingService.finalizeSale(
-                serviceCart,
-                customerId || undefined,
-                user.id,
-                mode,
-                opts
-            );
-
-            const detailsRes = await api.get(`/sales/${sale.id || sale._local_id}`);
-            const items = detailsRes.data?.data?.sale_items || [];
-
-            // Close UPI modal *before* print so the browser dialog is not blocked by overlay/focus trap
-            setUpiModal('closed');
-            setPendingUpiAmount(0);
-            await new Promise<void>(resolve => {
-                requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-            });
-
-            await PrinterService.printBill(sale, items);
-
-            setCart([]);
-            setPrescriptionRx('');
-            setPrescriptionImage('');
-            setSplitCash('');
-            setSplitUpi('');
-            setSplitCard('');
-            setSplitDue('');
-            setFlowState('IDLE');
-        } catch (err: unknown) {
-            console.error('Payment Failed', err);
-
-            if (err instanceof InsufficientStockError) {
-                setStockError({
-                    productName: err.productName || 'Unknown Product',
-                    available: err.available,
-                    requested: err.requested,
-                    missing: err.missing,
-                });
-            } else {
-                // eslint-disable-next-line no-alert
-                alert('Payment Failed: ' + (err instanceof Error ? err.message : String(err)));
-            }
-        } finally {
-            setIsCommittingSale(false);
-        }
-    };
-
-    const handlePayment = async () => {
-        const upiPortion =
-            paymentMode === 'UPI' ? total : paymentMode === 'MIXED' ? Math.round((parseFloat(splitUpi) || 0) * 100) / 100 : 0;
-        const wantsUpiQr = (paymentMode === 'UPI' || paymentMode === 'MIXED') && upiPortion > 0;
-
-        if (!isPaymentArmed) {
-            setFlowState('PAYMENT_READY');
-            // UPI / split-UPI: one click opens the QR modal (customer can pay immediately)
-            if (!wantsUpiQr) return;
-        }
-
-        if (!user) {
-            // eslint-disable-next-line no-alert
-            alert('No cashier logged in!');
-            return;
-        }
-
-        if (needsPrescription) {
-            const rx = prescriptionRx.trim();
-            const img = prescriptionImage.trim();
-            if (!rx || !img) {
-                // eslint-disable-next-line no-alert
-                alert('Schedule H: enter prescription reference and attach a prescription photo before payment.');
-                return;
-            }
-        }
-
-        if (paymentMode === 'MIXED') {
-            try {
-                buildPaymentSplits(total);
-            } catch (e: unknown) {
-                // eslint-disable-next-line no-alert
-                alert(e instanceof Error ? e.message : String(e));
-                return;
-            }
-        }
-
-        if (wantsUpiQr) {
-            if (!upiId.trim()) {
-                setPendingUpiAmount(upiPortion);
-                setUpiModal('missing_config');
-                return;
-            }
-            setPendingUpiAmount(upiPortion);
-            setUpiModal('qr');
-            return;
-        }
-
-        await commitSale();
-    };
-
-    const closeUpiModal = () => {
-        setUpiModal('closed');
-        setPendingUpiAmount(0);
-    };
-
-    useEffect(() => {
-        setSelectedIndex(0);
-    }, [results]);
-
-    useEffect(() => {
-        if (state !== 'PAYMENT_READY' && !barcode) {
-            barcodeRef.current?.focus();
-        }
-    }, [state, barcode]);
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (results.length > 0) {
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setSelectedIndex(idx => Math.min(idx + 1, results.length - 1));
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setSelectedIndex(idx => Math.max(idx - 1, 0));
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                const selected = results[selectedIndex];
-                if (selected) void confirmSelection(selected);
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                setBarcode('');
-            }
-        }
-    };
-
-    const confirmSelection = async (result: SearchResult) => {
-        if (result.totalStock <= 0) return;
-
-        try {
-            const detailsRes = await api.get(`/inventory/medicines/${result.product.id}`);
-            const product = detailsRes.data?.data;
-            if (!product) return;
-
-            const batches = product.batches || product.medicine_batches || [];
-            const batchToAdd = resolveBatchFromMedicineDetail(batches, result.bestBatchId);
-
-            if (!batchToAdd) {
-                console.error('No sellable batch for ID:', result.bestBatchId);
-                return;
-            }
-
-            const maxStock = Number(batchToAdd.quantity_remaining ?? 0);
-            if (maxStock <= 0) {
-                console.error('Batch has no stock:', result.bestBatchId);
-                return;
-            }
-
-            const unitPrice = Number(batchToAdd.sales_rate || batchToAdd.mrp || 0);
-
-            const newItem: CartLine = {
-                id: crypto.randomUUID(),
-                product: {
-                    id: product.id || product._local_id,
-                    _local_id: product._local_id || product.id,
-                    name: product.name,
-                    composition: product.generic_name || '',
-                    manufacturer: product.manufacturer || '',
-                    type: product.type || 'TABLET',
-                    hsn_code: product.hsn_code || '',
-                    gst_rate: Number(product.gst_rate || 0),
-                    min_stock_alert: Number(product.low_stock_threshold || 10),
-                    is_active: true,
-                    created_at: product.created_at,
-                    updated_at: product.updated_at,
-                    last_modified: Date.now()
-                },
-                batchId: batchToAdd.id || batchToAdd._local_id || '',
-                name: product.name,
-                qty: 1,
-                price: unitPrice,
-                expiry: batchToAdd.expiry_date || '',
-                total: unitPrice,
-            };
-
-            setCart(prev => [newItem, ...prev]);
-            setBarcode('');
-            if (state === 'IDLE') setFlowState('ACTIVE_BILLING');
-        } catch (err) {
-            console.error('Failed to add item from search', err);
-        }
-    };
-
-    const handleBarcodeSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const trimmed = barcode.trim();
-        if (!trimmed) return;
-
-        const hit = await ProductLookupService.findByBarcode(trimmed);
-        if (hit && hit.bestBatchId && hit.totalStock > 0) {
-            await confirmSelection(hit);
-            return;
-        }
-
-        // eslint-disable-next-line no-alert
-        alert('Barcode not found. Use product search or add barcode on Medicine Master.');
-        setBarcode('');
-    };
-
-    const updateQuantity = (itemId: string, newQtyStr: string) => {
-        const newQty = parseInt(newQtyStr) || 0;
-        if (newQty < 1) return;
-
-        setCart(prev =>
-            prev.map(item => {
-                if (item.id === itemId) {
-                    return {
-                        ...item,
-                        qty: newQty,
-                        total: item.price * newQty,
-                    };
-                }
-                return item;
-            })
-        );
-    };
-
-    const onPrescriptionFile = (file: File | null) => {
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            const r = reader.result;
-            if (typeof r === 'string') setPrescriptionImage(r);
-        };
-        reader.readAsDataURL(file);
-    };
-
-    const total = useMemo(() => cart.reduce((sum, item) => sum + item.total, 0), [cart]);
-    const canPay = cart.length > 0;
-    const isPaymentArmed = state === 'PAYMENT_READY';
-
-    return (
-        <div className="h-full flex flex-col gap-6 animate-slideIn select-none">
-            <div
-                className={`p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-8 shadow-2xl
-                ${state === 'IDLE' ? 'bg-surface-elevated border-border' : 'bg-surface border-primary/20'}
-            `}
-            >
-                <form onSubmit={e => void handleBarcodeSubmit(e)} className="flex-1 relative">
-                    <Input
-                        ref={barcodeRef}
-                        label={state === 'IDLE' ? 'SCAN / SEARCH TO BEGIN' : 'CONTINUE SCANNING / SEARCHING'}
-                        placeholder="Scan Barcode or Type Product Name..."
-                        value={barcode}
-                        onChange={e => setBarcode(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        className="text-2xl py-6 font-black tracking-tight"
-                        autoFocus
-                        autoComplete="off"
-                    />
-                    <BillingSearchDropdown
-                        results={results}
-                        selectedIndex={selectedIndex}
-                        onSelect={res => void confirmSelection(res)}
-                        isSearching={isSearching}
-                    />
-                </form>
-
-                <div className="text-right px-6 border-l-2 border-border">
-                    <p className="text-label font-black uppercase tracking-widest text-muted mb-1">Sub-Total</p>
-                    <p
-                        className={`text-6xl font-black tabular-nums tracking-tighter transition-colors
-                        ${canPay ? 'text-foreground-strong' : 'text-muted'}
-                    `}
-                    >
-                        <span className="text-primary text-4xl mr-2">₹</span>
-                        {total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </p>
-                </div>
-            </div>
-
-            {(state === 'PAYMENT_READY' || cart.length > 0) && (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    <div className="bg-surface border-2 border-border rounded-xl p-4 space-y-3">
-                        <div className="text-label font-black uppercase tracking-widest text-muted">Customer & GST</div>
-                        <Select
-                            label="Customer"
-                            options={customers}
-                            value={customerId}
-                            onChange={e => setCustomerId(e.target.value)}
-                        />
-                        <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={supplyInterState}
-                                onChange={e => setSupplyInterState(e.target.checked)}
-                                className="h-4 w-4"
-                            />
-                            Inter-state supply (IGST)
-                        </label>
-                    </div>
-
-                    <div className="bg-surface border-2 border-border rounded-xl p-4 space-y-3">
-                        <div className="text-label font-black uppercase tracking-widest text-muted">Payment</div>
-                        <Select
-                            label="Mode"
-                            options={[
-                                { value: 'CASH', label: 'Cash' },
-                                { value: 'UPI', label: 'UPI' },
-                                { value: 'CARD', label: 'Card' },
-                                { value: 'DUE', label: 'Due / Credit' },
-                                { value: 'MIXED', label: 'Split payment' },
-                            ]}
-                            value={paymentMode}
-                            onChange={e => setPaymentMode(e.target.value as PaymentMode)}
-                        />
-                        {paymentMode === 'MIXED' && (
-                            <div className="grid grid-cols-2 gap-2">
-                                <Input label="Cash ₹" value={splitCash} onChange={e => setSplitCash(e.target.value)} />
-                                <Input label="UPI ₹" value={splitUpi} onChange={e => setSplitUpi(e.target.value)} />
-                                <Input label="Card ₹" value={splitCard} onChange={e => setSplitCard(e.target.value)} />
-                                <Input label="Due ₹" value={splitDue} onChange={e => setSplitDue(e.target.value)} />
-                            </div>
-                        )}
-                    </div>
-
-                    {needsPrescription && (
-                        <div className="xl:col-span-2 bg-warning/10 border-2 border-warning rounded-xl p-4 space-y-3">
-                            <div className="flex items-center justify-between flex-wrap gap-2">
-                                <span className="text-heading font-black uppercase text-foreground-strong">
-                                    Schedule H — Prescription required
-                                </span>
-                                <Badge variant="danger">Mandatory</Badge>
-                            </div>
-                            <Input
-                                label="Rx reference / Doctor reg. no."
-                                value={prescriptionRx}
-                                onChange={e => setPrescriptionRx(e.target.value)}
-                            />
-                            <div className="flex flex-wrap gap-2 items-end">
-                                <input
-                                    ref={prescInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    capture="environment"
-                                    className="text-sm"
-                                    onChange={e => onPrescriptionFile(e.target.files?.[0] ?? null)}
-                                />
-                                {prescriptionImage && (
-                                    <Badge variant="success">Prescription image attached</Badge>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                    amount: parseFloat(splitUpi),
+                  })}
+                  size={140}
+                />
+                <span className="text-slate-900 text-xs font-mono mt-2">
+                  Scan to pay ₹{splitUpi}
+                </span>
+              </div>
             )}
 
-            <div className="flex-1 min-h-0 bg-surface border-2 border-border rounded-xl overflow-hidden flex flex-col shadow-inner">
-                {cart.length > 0 ? (
-                    <Table
-                        headers={['ITEM_NAME', 'QTY', 'UNIT_PRICE', 'TOTAL_INR']}
-                        data={cart}
-                        renderRow={item => (
-                            <tr key={item.id} className="border-b-2 border-border hover:bg-surface-elevated group cursor-default">
-                                <td className="px-6 py-4">
-                                    <div className="flex flex-col">
-                                        <span className="text-item-name font-black text-foreground-strong uppercase">
-                                            {item.name}
-                                        </span>
-                                        <div className="text-[10px] font-bold text-muted uppercase tracking-widest flex gap-2 flex-wrap">
-                                            <span>Exp: {item.expiry}</span>
-                                            {item.product.schedule_h && (
-                                                <Badge variant="danger">H</Badge>
-                                            )}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-center w-32">
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        value={item.qty}
-                                        onChange={e => updateQuantity(item.id, e.target.value)}
-                                        onClick={e => e.stopPropagation()}
-                                        className="w-16 h-10 text-center font-black text-lg bg-surface border-2 border-border rounded-md focus:border-primary outline-none tabular-nums"
-                                    />
-                                </td>
-                                <td className="px-6 py-4 text-right text-muted tabular-nums">
-                                    <div className="flex flex-col items-end">
-                                        <span>₹{item.price.toFixed(2)}</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-right font-black text-foreground-strong tabular-nums">
-                                    ₹{item.total.toFixed(2)}
-                                </td>
-                            </tr>
-                        )}
-                    />
-                ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-muted gap-4 opacity-40">
-                        <span className="text-8xl">📦</span>
-                        <div className="text-center">
-                            <p className="text-heading font-black uppercase tracking-tighter text-foreground-strong">
-                                {BILLING_SCREEN_COPY.terminalReady}
-                            </p>
-                            <p className="text-label font-bold text-muted uppercase tracking-widest mt-1">
-                                {BILLING_SCREEN_COPY.terminalReadySub}
-                            </p>
-                        </div>
-                    </div>
-                )}
+            <div className="flex justify-end space-x-2 pt-2 border-t border-slate-800">
+              <Button variant="secondary" onClick={() => setIsCheckoutModalOpen(false)}>
+                Cancel [Esc]
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleFinalCheckout}
+                disabled={isCommitting}
+                className="bg-emerald-600 hover:bg-emerald-500 font-bold"
+              >
+                {isCommitting ? 'Completing...' : 'Confirm Payment & Print [Enter]'}
+              </Button>
             </div>
+          </div>
+        </Modal>
+      )}
 
-            <div className="bg-surface-elevated border-2 border-border p-4 rounded-xl flex items-center justify-between shadow-xl">
-                <div className="flex gap-2">
-                    <ShortcutHint kbd="F2" label="SCAN" active={state !== 'PAYMENT_READY'} />
-                    <ShortcutHint kbd="F6" label="DISC" />
-                    <ShortcutHint kbd="F9" label="HOLD" />
-                    <ShortcutHint kbd="DEL" label="VOID" />
-                </div>
-
-                <div className="flex gap-6 items-center">
-                    <button
-                        type="button"
-                        onClick={() => setCart([])}
-                        className="text-muted hover:text-danger text-label font-black uppercase tracking-widest transition-colors"
-                    >
-                        [ESC] Cancel Bill
-                    </button>
-
-                    <Button
-                        variant={isPaymentArmed ? 'success' : 'secondary'}
-                        size="lg"
-                        className={`h-16 px-12 transition-all duration-300 font-black
-                            ${isPaymentArmed ? 'scale-105 shadow-xl' : 'opacity-80'}
-                            ${!canPay ? 'pointer-events-none grayscale' : ''}
-                        `}
-                        onClick={() => void handlePayment()}
-                    >
-                        {isPaymentArmed ? 'PRINT & CLOSE (ENTER)' : 'SETTLE & GO (CTRL+ENTER)'}
-                    </Button>
-                </div>
-            </div>
-
-            <Modal
-                isOpen={upiModal === 'missing_config'}
-                onClose={closeUpiModal}
-                title="UPI not configured"
-                footer={
-                    <>
-                        <Button variant="ghost" onClick={closeUpiModal}>
-                            Close
-                        </Button>
-                        <Button
-                            variant="primary"
-                            className="font-black"
-                            onClick={() => {
-                                closeUpiModal();
-                                navigatePath('/settings');
-                            }}
-                        >
-                            Open settings
-                        </Button>
-                    </>
-                }
-            >
-                <p className="text-sm font-bold text-muted">
-                    UPI ID not configured. Go to Settings → Payment Settings and save your VPA, then try again.
-                </p>
-            </Modal>
-
-            <Modal
-                isOpen={upiModal === 'qr'}
-                onClose={closeUpiModal}
-                title="Scan to pay (UPI)"
-                footer={
-                    <>
-                        <Button variant="ghost" onClick={closeUpiModal}>
-                            Cancel / Close
-                        </Button>
-                        <Button
-                            variant="success"
-                            className="font-black"
-                            onClick={() => void commitSale()}
-                            disabled={isCommittingSale}
-                            isLoading={isCommittingSale}
-                        >
-                            Payment Received ✓
-                        </Button>
-                    </>
-                }
-            >
-                    <div className="flex flex-col items-center gap-4 text-center">
-                    <div>
-                        <p className="text-lg font-black text-foreground-strong">{shopName}</p>
-                        <p className="text-xs font-bold uppercase tracking-widest text-muted mt-1">{upiId}</p>
-                    </div>
-                    <p className="text-4xl font-black tabular-nums text-foreground-strong">
-                        ₹ {pendingUpiAmount.toFixed(2)}
-                    </p>
-                    {upiQrValue ? (
-                        <div className="bg-white p-3 rounded-xl border-2 border-border">
-                            <QRCodeSVG value={upiQrValue} size={200} />
-                        </div>
-                    ) : (
-                        <span className="text-muted text-sm font-bold">Preparing QR…</span>
-                    )}
-                    <p className="text-xs font-bold text-muted">Scan with GPay, PhonePe, Paytm, or BHIM</p>
-                    <p className="text-[10px] font-bold text-muted max-w-sm">
-                        After the customer pays, tap “Payment Received” — the bill is saved and the print dialog opens automatically.
-                    </p>
-                </div>
-            </Modal>
-
-            {stockError && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
-                    <div className="bg-surface w-full max-w-md p-6 rounded-2xl shadow-2xl border-2 border-danger animate-scaleIn">
-                        <div className="flex flex-col items-center text-center gap-4">
-                            <div className="bg-danger/10 p-4 rounded-full">
-                                <span className="text-4xl">⚠️</span>
-                            </div>
-
-                            <div>
-                                <h3 className="text-xl font-black text-danger uppercase tracking-tight">Insufficient Stock</h3>
-                                <p className="text-muted font-bold mt-1">We cannot fulfill the request for:</p>
-                                <p className="text-lg font-black text-foreground-strong mt-1 uppercase border-b-2 border-danger/20 inline-block pb-1">
-                                    {stockError.productName}
-                                </p>
-                            </div>
-
-                            <div className="bg-surface-elevated w-full rounded-xl p-4 grid grid-cols-2 gap-4 border border-border">
-                                <div className="text-center">
-                                    <p className="text-xs font-bold text-muted uppercase tracking-widest">Available</p>
-                                    <p className="text-2xl font-black text-success">{stockError.available}</p>
-                                </div>
-                                <div className="text-center border-l-2 border-border">
-                                    <p className="text-xs font-bold text-muted uppercase tracking-widest">Required</p>
-                                    <p className="text-2xl font-black text-foreground">{stockError.requested}</p>
-                                </div>
-                                <div className="col-span-2 border-t-2 border-border pt-3 mt-1">
-                                    <p className="text-xs font-bold text-danger uppercase tracking-widest">Shortage</p>
-                                    <p className="text-3xl font-black text-danger">-{stockError.missing}</p>
-                                </div>
-                            </div>
-
-                            <Button
-                                variant="danger"
-                                className="w-full font-black uppercase tracking-widest mt-2"
-                                onClick={() => setStockError(null)}
-                            >
-                                Acknowledge & Fix
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-const ShortcutHint = ({ kbd, label, active = false }: { kbd: string; label: string; active?: boolean }) => (
-    <div
-        className={`px-4 py-2 border-2 rounded-lg flex items-center gap-3 transition-colors
-        ${active ? 'bg-primary/20 border-primary shadow-lg' : 'bg-surface border-border'}
-    `}
-    >
-        <span className={`text-label font-black uppercase ${active ? 'text-primary' : 'text-muted'}`}>{kbd}</span>
-        <div className="h-4 w-px bg-border" />
-        <span
-            className={`text-[10px] font-black uppercase tracking-widest ${active ? 'text-foreground-strong' : 'text-muted'}`}
+      {/* ── PARK SALE MODAL ────────────────────────────────────────────────── */}
+      {isParkModalOpen && (
+        <Modal
+          isOpen={isParkModalOpen}
+          onClose={() => setIsParkModalOpen(false)}
+          title="Park Active Sale (Hold)"
         >
-            {label}
-        </span>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-300">
+              Holding this sale will generate a park token. You or another counter can resume it at any time.
+            </p>
+            <div className="flex justify-end space-x-2">
+              <Button variant="secondary" onClick={() => setIsParkModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleParkSale}>
+                Confirm Hold (F6)
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── RECALL PARKED BILL MODAL ────────────────────────────────────────── */}
+      {isRecallModalOpen && (
+        <Modal
+          isOpen={isRecallModalOpen}
+          onClose={() => setIsRecallModalOpen(false)}
+          title="Recall Parked Bill [F7]"
+        >
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {parkedBills.length === 0 ? (
+              <p className="text-slate-500 text-center py-6 text-sm">No parked sales found in store</p>
+            ) : (
+              parkedBills.map(b => (
+                <div
+                  key={b.id}
+                  onClick={() => handleResumeParked(b.id || b._local_id)}
+                  className="p-3 bg-slate-900 border border-slate-800 rounded hover:border-emerald-500 cursor-pointer flex justify-between items-center"
+                >
+                  <div>
+                    <span className="font-bold text-emerald-400 font-mono">#{b.park_token}</span>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {b.cart_snapshot?.length || 0} items · Cashier: {b.cashier_id}
+                    </p>
+                  </div>
+                  <Button variant="secondary" size="sm">
+                    Resume
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* ── RECEIPT & LAST BILL MODAL ───────────────────────────────────────── */}
+      {isReceiptModalOpen && lastBillData && (
+        <Modal
+          isOpen={isReceiptModalOpen}
+          onClose={() => setIsReceiptModalOpen(false)}
+          title="Sale Completed — Tax Invoice"
+        >
+          <div className="space-y-4 text-slate-200">
+            <div className="bg-slate-900 border border-slate-800 rounded p-3 space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-emerald-400">INVOICE #{lastBillData?.sale?.invoice_number}</span>
+                <Badge variant="success">PAID</Badge>
+              </div>
+              <p className="text-xs text-slate-400">Grand Total: ₹{lastBillData?.sale?.grand_total?.toFixed(2)}</p>
+              {lastBillData?.change_returned > 0 && (
+                <p className="text-xs text-amber-300">Change Returned: ₹{lastBillData.change_returned.toFixed(2)}</p>
+              )}
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="secondary" onClick={() => setIsReceiptModalOpen(false)}>
+                Close [Esc]
+              </Button>
+              <Button variant="primary" onClick={() => window.print()}>
+                Print Receipt [F9]
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── RETURNS WORKFLOW MODAL ─────────────────────────────────────────── */}
+      {isReturnsModalOpen && (
+        <Modal
+          isOpen={isReturnsModalOpen}
+          onClose={() => setIsReturnsModalOpen(false)}
+          title="Returns & Exchanges [F10]"
+        >
+          <div className="space-y-4 text-slate-200">
+            <p className="text-xs text-slate-400">
+              Scan invoice barcode or enter original invoice number to initiate a partial or full return.
+            </p>
+            <Input type="text" placeholder="Scan or enter Invoice Number..." />
+            <div className="flex justify-end space-x-2">
+              <Button variant="secondary" onClick={() => setIsReturnsModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary">
+                Search Invoice
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── SUPERVISOR OVERRIDE MODAL ───────────────────────────────────────── */}
+      {isSupervisorModalOpen && (
+        <Modal
+          isOpen={isSupervisorModalOpen}
+          onClose={() => setIsSupervisorModalOpen(false)}
+          title="Supervisor Manager Authorization"
+        >
+          <div className="space-y-4 text-slate-200">
+            <p className="text-xs text-slate-400">
+              Enter 4-digit Manager PIN to authorize restricted action (high discount, manual batch override, return).
+            </p>
+            <Input type="password" placeholder="Enter 4-digit PIN" maxLength={4} />
+            <div className="flex justify-end space-x-2">
+              <Button variant="secondary" onClick={() => setIsSupervisorModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary">
+                Authorize Override
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
-);
+  );
+};

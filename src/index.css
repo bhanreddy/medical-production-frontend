@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./styles/liquid-dashboard.css";
+@import "./styles/liquid-material.css";
 
 /* Hover variants that only fire for a real mouse (pointer: fine).
    Touch devices apply a sticky :hover on tap, which made the dashboard
@@ -30,6 +32,7 @@
   --color-bg-surface: rgb(var(--surface));
   --color-bg-card: rgb(var(--surface-alt));
   --color-accent-primary: rgb(var(--primary));
+  --color-accent-secondary: rgb(var(--info));
   --color-border: rgb(var(--border));
   --color-foreground: rgb(var(--foreground));
   --color-foreground-strong: rgb(var(--foreground-strong));
@@ -38,6 +41,8 @@
   --color-primary: rgb(var(--primary));
   --color-success: rgb(var(--success));
   --color-warning: rgb(var(--warning));
+  --color-info: rgb(var(--info));
+  --color-violet: rgb(var(--violet));
   --color-danger: rgb(var(--danger));
   --color-error: rgb(var(--danger));
   --color-on-primary: rgb(var(--on-primary));
@@ -49,37 +54,47 @@
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
+  --text-small: 11px;
+  --text-label: 12px;
+  --text-base: 14px;
+  --text-item-name: 16px;
+  --text-heading: 24px;
+  --text-billing-total: 40px;
+
   --shadow-shell: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 24px 48px -24px rgb(0 0 0 / 0.35);
   --shadow-card: 0 4px 24px -8px rgb(0 0 0 / 0.12), 0 0 0 1px rgb(var(--border) / 0.5);
   --shadow-card-dark: 0 8px 32px -12px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.06);
 }
 
-/* MedPOS — clinical slate + teal accent */
+/* MedPOS — pearl glass, sapphire actions, restrained violet and warm accents. */
 :root {
+  color-scheme: light;
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  --background: 240 244 242;
+  --background: 240 243 249;
   --surface: 255 255 255;
-  --surface-elevated: 248 252 250;
-  --surface-alt: 236 253 245;
-  --border: 203 213 210;
-  --foreground: 15 23 42;
-  --foreground-strong: 15 23 42;
-  --muted: 71 85 95;
+  --surface-elevated: 248 249 253;
+  --surface-alt: 233 237 247;
+  --border: 211 219 234;
+  --foreground: 52 64 86;
+  --foreground-strong: 27 39 64;
+  --muted: 96 111 138;
   --overlay: 15 23 42;
 
-  --primary: 15 118 110;
-  --success: 5 122 85;
-  --warning: 180 83 9;
-  --danger: 185 28 28;
+  --primary: 67 91 169;
+  --success: 55 121 101;
+  --warning: 151 103 39;
+  --danger: 175 73 99;
+  --info: 65 110 161;
+  --violet: 124 99 165;
 
   --on-primary: 255 255 255;
   --on-success: 255 255 255;
   --on-warning: 255 255 255;
   --on-danger: 255 255 255;
 
-  --focus: 13 148 136;
+  --focus: 67 91 169;
 
   --text-billing-total: 48px;
   --text-heading: 24px;
@@ -90,7 +105,7 @@
 
   --radius-sm: 4px;
   --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-lg: 16px;
 }
 
 .no-theme-transition,
@@ -107,27 +122,30 @@
 }
 
 .dark {
-  --background: 10 16 24;
-  --surface: 15 23 34;
-  --surface-elevated: 24 34 48;
-  --surface-alt: 18 28 40;
-  --border: 51 65 82;
-  --foreground: 226 232 240;
-  --foreground-strong: 248 250 252;
-  --muted: 148 163 184;
+  color-scheme: dark;
+  --background: 16 23 39;
+  --surface: 27 36 56;
+  --surface-elevated: 33 43 65;
+  --surface-alt: 41 52 76;
+  --border: 65 78 104;
+  --foreground: 220 228 244;
+  --foreground-strong: 243 246 255;
+  --muted: 162 177 202;
   --overlay: 2 6 23;
 
-  --primary: 45 212 191;
-  --success: 52 211 153;
-  --warning: 251 191 36;
-  --danger: 248 113 113;
+  --primary: 164 184 235;
+  --success: 133 184 160;
+  --warning: 218 184 128;
+  --danger: 220 148 169;
+  --info: 148 182 220;
+  --violet: 186 166 220;
 
   --on-primary: 10 16 24;
   --on-success: 10 16 24;
   --on-warning: 15 23 42;
   --on-danger: 15 23 42;
 
-  --focus: 45 212 191;
+  --focus: 164 184 235;
 }
 
 @layer base {
@@ -142,7 +160,7 @@
     line-height: 1.5;
     overflow: hidden;
     height: 100vh;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
   }
 
   h1,
@@ -151,8 +169,8 @@
   h4,
   h5,
   h6 {
-    @apply font-bold text-foreground-strong tracking-tight;
-    letter-spacing: -0.02em;
+    @apply font-semibold text-foreground-strong;
+    letter-spacing: 0;
   }
 
   :focus-visible {
@@ -208,4 +226,24 @@
 
 #root {
   height: 100vh;
+}
+
+button, a, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:not(:disabled), select, summary {
+  cursor: pointer;
+}
+
+input, select, textarea {
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

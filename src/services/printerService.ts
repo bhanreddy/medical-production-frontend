@@ -125,7 +125,7 @@ export const PrinterService = {
 
         } catch (error) {
             console.error("Print failed:", error);
-            alert("Printing failed. Ensure shop profile is synced.");
+            throw error;
         }
     }
 }

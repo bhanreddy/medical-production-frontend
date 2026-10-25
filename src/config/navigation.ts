@@ -61,6 +61,7 @@ export const NAV_ITEMS: NavItem[] = [
     { id: 'sales_analytics', label: 'Analytics', abbr: 'BI', key: 'F12', path: '/analytics', section: 'finance' },
 
     { id: 'gst_compliance', label: 'GST', abbr: 'GST', path: '/gst', section: 'compliance' },
+    { id: 'orders_hub', label: 'Orders (OMS)', abbr: 'OMS', path: '/orders', section: 'operations' },
     { id: 'tele_consultation', label: 'Tele', abbr: 'Dr', path: '/tele', badge: FEATURE_BADGES.beta, section: 'beta' },
     { id: 'doorstep_delivery', label: 'Delivery', abbr: 'Drop', path: '/delivery', badge: FEATURE_BADGES.beta, section: 'beta' },
 ];

@@ -1,53 +1,35 @@
-import { useEffect } from 'react';
-import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
-import { useAuth } from './lib/auth';
+import { useEffect, lazy, Suspense } from 'react';
+import { createBrowserRouter, RouterProvider, Outlet, Navigate, Link } from 'react-router-dom';
+import { AuthFrame } from './components/auth/AuthFrame';
+import { ArrowLeft } from 'lucide-react';
+import { useAuth, observeAuthSession } from './lib/auth';
 import { AuthGuard } from './components/auth/AuthGuard';
 import { LoginFlowPage } from './components/auth/LoginFlowPage';
 import { HomeRedirect } from './components/auth/HomeRedirect';
-import { openDB } from 'idb';
-const Placeholder = ({ title }: { title: string }) => <div className="p-4"><h1 className="text-xl">{title}</h1></div>;
+import { PaymentReturnPage } from './components/auth/PaymentReturnPage';
+import { getUserSubscriptionReturnPath } from './payment/phonePePG/returnPath';
+import { RouteError } from './components/RouteError';
+import { ClinicProfileSettings } from './components/Settings/ClinicProfileSettings';
+import { ExpiryAlertsScreen } from './components/Inventory/ExpiryAlertsScreen';
+import { StaffSettings } from './components/Settings/StaffSettings';
 
-const Error403 = () => <div className="p-8 text-center text-red-500"><h1 className="text-2xl font-bold">403 - Forbidden</h1><p>You do not have permission to access this page.</p></div>;
+const Error403 = () => <AuthFrame title="Access restricted" subtitle="Your account does not have permission to open this page."><Link to="/" className="flex items-center gap-2 text-primary text-sm font-semibold"><ArrowLeft size={16} aria-hidden /> Return to your workspace</Link></AuthFrame>;
 
-import api from './lib/api';
-
-// TODO: Remove after 2026-06-23 (30 days post-migration)
-// ONE-TIME: Migrate any bills stuck in old idb (medpos-web) directly to Server
-// Run on first load after this deploy, protected by localStorage gate
-async function migrateStuckBills() {
-  if (localStorage.getItem('medpos_legacy_migration_done') === 'true') {
-    return;
-  }
-  try {
-    const oldDb = await openDB('medpos-web', 1);
-    const stuckBills = await oldDb.getAll('bills');
-    if (stuckBills && stuckBills.length > 0) {
-      const response = await api.post('/bills/migrate', { bills: stuckBills });
-      if (response.data && response.data.success) {
-        console.log(`Migrated ${stuckBills.length} stuck bills to server`);
-        await oldDb.clear('bills');
-        localStorage.setItem('medpos_legacy_migration_done', 'true');
-      }
-    } else {
-      localStorage.setItem('medpos_legacy_migration_done', 'true');
-    }
-  } catch (err) {
-    // Old DB may not exist on clean installs or request could fail — safe to ignore/retry
-    console.warn('Stuck bills migration skipped or failed:', err);
-  }
-}
 
 // The top level App layout where we check session
 const RootLayout = () => {
     const { checkSession } = useAuth();
     
     useEffect(() => {
-        migrateStuckBills().catch(console.error);
-        checkSession();
+        const stop = observeAuthSession();
+        void checkSession();
+        const reconnect = () => { void checkSession(); };
+        window.addEventListener('online', reconnect);
+        return () => { stop(); window.removeEventListener('online', reconnect); };
         // Background sync is started by ClinicLayout — no duplicate listener here.
     }, [checkSession]);
 
-    return <Outlet />;
+    return <Suspense fallback={<div role="status" className="p-8 text-muted">Loading page…</div>}><Outlet /></Suspense>;
 };
 
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -59,11 +41,11 @@ import { AdminClinicProfile } from './components/admin/AdminClinicProfile';
 
 import { ClinicLayout } from './components/clinic/ClinicLayout';
 import { ClinicDashboard } from './components/clinic/ClinicDashboard';
-import { WebPos } from './components/clinic/WebPos';
-import { RegisterWizard } from './components/auth/RegisterWizard';
+const WebPos = lazy(() => import('./components/clinic/WebPos').then(module => ({ default: module.WebPos })));
+const RegisterWizard = lazy(() => import('./components/auth/RegisterWizard').then(module => ({ default: module.RegisterWizard })));
 import BillingSettings from './routes/(clinic)/settings/billing';
-import { BusinessAnalyticsScreen } from './components/Analytics/BusinessAnalyticsScreen';
-import { ImportDataScreen } from './components/Settings/ImportDataScreen';
+const BusinessAnalyticsScreen = lazy(() => import('./components/Analytics/BusinessAnalyticsScreen').then(module => ({ default: module.BusinessAnalyticsScreen })));
+const ImportDataScreen = lazy(() => import('./components/Settings/ImportDataScreen').then(module => ({ default: module.ImportDataScreen })));
 import { BillingSalesListPage } from './components/clinic/BillingSalesListPage';
 import { PurchasesListPage } from './components/clinic/PurchasesListPage';
 import { CustomersListPage } from './components/clinic/CustomersListPage';
@@ -73,15 +55,31 @@ import { ReportsHubPage } from './components/clinic/ReportsHubPage';
 import { PurchaseWorkflowPage, InventoryPageShell } from './components/clinic/EmbeddedClinicScreens';
 import { ShortbookPage } from './components/clinic/ShortbookPage';
 import { SettingsScreen } from './components/Settings/SettingsScreen';
+const PriceBooksPage = lazy(() => import('./components/Commercial/PriceBooksPage').then(module => ({ default: module.PriceBooksPage })));
+const PromotionsPage = lazy(() => import('./components/Commercial/PromotionsPage').then(module => ({ default: module.PromotionsPage })));
+const CouponsPage = lazy(() => import('./components/Commercial/CouponsPage').then(module => ({ default: module.CouponsPage })));
+const LoyaltyAdminPage = lazy(() => import('./components/Commercial/LoyaltyAdminPage').then(module => ({ default: module.LoyaltyAdminPage })));
+const SupplierSchemesPage = lazy(() => import('./components/Commercial/SupplierSchemesPage').then(module => ({ default: module.SupplierSchemesPage })));
+const PrescriptionQueuePage = lazy(() => import('./components/Prescriptions/PrescriptionQueuePage').then(module => ({ default: module.PrescriptionQueuePage })));
+const PatientMedicationHistoryPage = lazy(() => import('./components/Prescriptions/PatientMedicationHistoryPage').then(module => ({ default: module.PatientMedicationHistoryPage })));
+const InventoryCommandCenter = lazy(() => import('./components/Inventory/InventoryCommandCenter').then(module => ({ default: module.InventoryCommandCenter })));
+const StocktakePage = lazy(() => import('./components/Inventory/StocktakePage').then(module => ({ default: module.StocktakePage })));
+const ExpiryRecallPage = lazy(() => import('./components/Inventory/ExpiryRecallPage').then(module => ({ default: module.ExpiryRecallPage })));
+const ReorderShortbookPage = lazy(() => import('./components/Inventory/ReorderShortbookPage').then(module => ({ default: module.ReorderShortbookPage })));
+const ProcurementCommandCenter = lazy(() => import('./components/Procurement/ProcurementCommandCenter').then(module => ({ default: module.ProcurementCommandCenter })));
+const TransfersCommandCenter = lazy(() => import('./components/Transfers/TransfersCommandCenter').then(module => ({ default: module.TransfersCommandCenter })));
+const OrdersCommandCenter = lazy(() => import('./components/Orders/OrdersCommandCenter').then(module => ({ default: module.OrdersCommandCenter })));
 
 const router = createBrowserRouter([
     {
         path: '/',
         element: <RootLayout />,
+        errorElement: <RouteError />,
         children: [
             { index: true, element: <HomeRedirect /> },
             { path: 'login', element: <LoginFlowPage /> },
             { path: 'register', element: <RegisterWizard /> },
+            { path: getUserSubscriptionReturnPath(), element: <PaymentReturnPage /> },
             { path: '403', element: <Error403 /> },
             {
                 path: 'admin',
@@ -91,10 +89,11 @@ const router = createBrowserRouter([
                     </AuthGuard>
                 ),
                 children: [
+                    { index: true, element: <Navigate to="dashboard" replace /> },
                     { path: 'dashboard', element: <AdminDashboard /> },
                     { path: 'clinics', element: <AdminClinics /> },
                     { path: 'clinics/:id/profile', element: <AdminClinicProfile /> },
-                    { path: 'clinics/:id', element: <Placeholder title="Clinic Details" /> },
+                    { path: 'clinics/:id', element: <AdminClinicProfile /> },
                     { path: 'users', element: <AdminUsers /> },
                     { path: 'system', element: <AdminSystemHealth /> },
                 ]
@@ -110,18 +109,35 @@ const router = createBrowserRouter([
                     { path: 'dashboard', element: <ClinicDashboard /> },
                     { path: 'billing', element: <BillingSalesListPage /> },
                     { path: 'billing/new', element: <WebPos /> },
+                    { path: 'orders', element: <OrdersCommandCenter /> },
+                    { path: 'delivery', element: <OrdersCommandCenter fulfilment="HOME_DELIVERY" /> },
+                    { path: 'procurement', element: <ProcurementCommandCenter /> },
+                    { path: 'transfers', element: <TransfersCommandCenter /> },
+                    { path: 'warehouse', element: <TransfersCommandCenter initialTab="warehouse" /> },
                     { path: 'purchases', element: <PurchasesListPage /> },
                     { path: 'purchases/new', element: <PurchaseWorkflowPage /> },
                     { path: 'inventory', element: <InventoryPageShell /> },
+                    { path: 'inventory/command-center', element: <InventoryCommandCenter /> },
+                    { path: 'inventory/stocktake', element: <StocktakePage /> },
+                    { path: 'inventory/expiry-recall', element: <ExpiryRecallPage /> },
+                    { path: 'inventory/reorder', element: <ReorderShortbookPage /> },
+                    { path: 'inventory/classic', element: <InventoryPageShell /> },
                     { path: 'shortbook', element: <ShortbookPage /> },
+                    { path: 'prescriptions', element: <PrescriptionQueuePage /> },
+                    { path: 'patients/:id/medications', element: <PatientMedicationHistoryPage /> },
                     { path: 'customers', element: <CustomersListPage /> },
                     { path: 'suppliers', element: <SuppliersListPage /> },
                     { path: 'expenses', element: <ExpensesListPage /> },
                     { path: 'reports', element: <ReportsHubPage /> },
-                    { path: 'alerts', element: <Placeholder title="Alerts" /> },
+                    { path: 'price-books', element: <PriceBooksPage /> },
+                    { path: 'promotions', element: <PromotionsPage /> },
+                    { path: 'coupons', element: <CouponsPage /> },
+                    { path: 'loyalty', element: <LoyaltyAdminPage /> },
+                    { path: 'supplier-schemes', element: <SupplierSchemesPage /> },
+                    { path: 'alerts', element: <ExpiryAlertsScreen /> },
                     { path: 'analytics', element: <BusinessAnalyticsScreen /> },
                     { path: 'settings', element: <SettingsScreen /> },
-                    { path: 'settings/clinic', element: <Placeholder title="Clinic Settings" /> },
+                    { path: 'settings/clinic', element: <ClinicProfileSettings /> },
                     {
                         path: 'settings/billing',
                         element: (
@@ -134,11 +150,11 @@ const router = createBrowserRouter([
                         path: 'settings/users',
                         element: (
                             <AuthGuard requireRole={['OWNER']}>
-                                <Placeholder title="User Settings" />
+                                <StaffSettings />
                             </AuthGuard>
                         ),
                     },
-                    { path: 'settings/invoice', element: <Placeholder title="Invoice Settings" /> },
+                    { path: 'settings/invoice', element: <ClinicProfileSettings invoiceOnly /> },
                     {
                         path: 'settings/import',
                         element: (

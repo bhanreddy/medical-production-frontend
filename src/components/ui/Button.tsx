@@ -1,4 +1,6 @@
 import React from 'react';
+import { LoaderCircle } from 'lucide-react';
+import { cn } from '../../utils/cn';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'success';
@@ -15,37 +17,35 @@ export const Button: React.FC<ButtonProps> = ({
     ...props
 }) => {
     const baseStyles =
-        "inline-flex items-center justify-center font-extrabold uppercase tracking-widest text-[11px] sm:text-xs transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background shadow-sm";
+        "inline-flex shrink-0 items-center justify-center gap-2 font-semibold leading-5 transition-colors duration-150 disabled:opacity-50 disabled:pointer-events-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
     const variants = {
         primary:
-            "bg-primary text-on-primary hover:brightness-110 shadow-md shadow-primary/20 border border-white/10 dark:border-white/5",
+            "bg-primary text-on-primary hover:brightness-110 border border-transparent shadow-sm",
         secondary:
-            "bg-surface-elevated text-foreground border border-border/90 hover:bg-surface-alt hover:border-border shadow-sm",
-        danger: "bg-danger text-on-danger hover:brightness-110 shadow-md shadow-danger/15 border border-white/10",
-        success: "bg-success text-on-success hover:brightness-110 shadow-md shadow-success/15 border border-white/10",
+            "bg-surface text-foreground border border-border hover:bg-surface-alt shadow-sm",
+        danger: "bg-danger text-on-danger hover:brightness-110 border border-transparent shadow-sm",
+        success: "bg-success text-on-success hover:brightness-110 border border-transparent shadow-sm",
         ghost: "shadow-none bg-transparent text-muted hover:text-foreground hover:bg-surface-elevated/80 border border-transparent",
     };
 
     const sizes = {
-        sm: "px-3 py-2 text-small rounded-lg",
-        md: "px-5 py-2.5 text-base rounded-lg",
-        lg: "px-8 py-3.5 text-heading rounded-xl",
-        icon: "p-2 rounded-xl shadow-none",
+        sm: "min-h-8 px-3 py-1.5 text-xs rounded-md",
+        md: "min-h-10 px-4 py-2 text-sm rounded-lg",
+        lg: "min-h-12 px-6 py-3 text-base rounded-lg",
+        icon: "h-10 w-10 p-2 rounded-lg shadow-none",
     };
 
     return (
         <button
-            className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
-            disabled={isLoading || props.disabled}
             {...props}
+            className={cn(baseStyles, variants[variant], sizes[size], 'glass-button', `glass-button-${variant}`, className)}
+            disabled={isLoading || props.disabled}
+            aria-busy={isLoading || undefined}
         >
             {isLoading ? (
                 <div className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                    <LoaderCircle className="animate-spin h-4 w-4" aria-hidden />
                     <span>Processing</span>
                 </div>
             ) : children}

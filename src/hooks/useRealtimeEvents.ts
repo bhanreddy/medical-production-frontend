@@ -51,13 +51,16 @@ export function useRealtimeEvents() {
 
   useEffect(() => {
     let cancelled = false;
+    let generation = 0;
     let retryTimeout: ReturnType<typeof setTimeout>;
     let retryDelay = 5000; // start at 5s
 
     async function connect() {
       if (cancelled) return;
+      const attempt = ++generation;
 
       const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled || attempt !== generation) return;
       const token = session?.access_token;
       if (!token || isTokenExpired(token)) {
         // Not authenticated or token expired — retry in exponentially backed off time
@@ -71,6 +74,7 @@ export function useRealtimeEvents() {
       const baseURL = import.meta.env.VITE_API_URL || '';
       const url = `${baseURL}/events/stream?token=${encodeURIComponent(token)}`;
 
+      esRef.current?.close();
       const es = new EventSource(url);
       esRef.current = es;
 
@@ -108,6 +112,7 @@ export function useRealtimeEvents() {
 
     return () => {
       cancelled = true;
+      generation++;
       esRef.current?.close();
       clearTimeout(retryTimeout);
       subscription.unsubscribe();

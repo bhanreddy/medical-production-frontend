@@ -1,21 +1,16 @@
 import api from '../lib/api';
 import type { ShopProfile } from '../core/types';
+import { fetchClinicProfile, clearClinicProfileCache } from './clinicProfileCache';
 
 export const ShopProfileService = {
 
     /**
      * Fetch from Supabase (Authoritative)
      */
-    async fetchShopProfileOnline(): Promise<Partial<ShopProfile> | null> {
-        console.log(`[Online] Fetching shop profile from /clinics/me ...`);
-
+    async fetchShopProfileOnline(force = false): Promise<Partial<ShopProfile> | null> {
         try {
-            const response = await api.get('/clinics/me');
-            const data = response.data;
-            console.log('[ShopProfile] API response:', JSON.stringify(data).slice(0, 300));
-            
-            if (data?.data) {
-                const profile = data.data;
+            const profile = await fetchClinicProfile(force);
+            if (profile) {
                 return {
                     id: profile.id,
                     shop_id: profile.id,
@@ -35,7 +30,6 @@ export const ShopProfileService = {
                     updated_at: profile.updated_at
                 };
             }
-            console.warn('[ShopProfile] API returned OK but no data.data:', data);
         } catch (err: any) {
             const status = err?.response?.status;
             const body = err?.response?.data;
@@ -48,7 +42,7 @@ export const ShopProfileService = {
      * Sync: Fetch Online
      */
     async syncShopProfile(): Promise<ShopProfile> {
-        const onlineData = await this.fetchShopProfileOnline();
+        const onlineData = await this.fetchShopProfileOnline(true);
         if (onlineData) {
             return onlineData as ShopProfile;
         }
@@ -68,6 +62,7 @@ export const ShopProfileService = {
      */
     async updatePhoneNumber(newPhone: string): Promise<void> {
         await api.put('/clinics/me', { phone: newPhone });
+        clearClinicProfileCache();
     },
 
     /**
@@ -75,5 +70,6 @@ export const ShopProfileService = {
      */
     async updateLogo(base64Data: string): Promise<void> {
         await api.put('/clinics/me', { logo_url: base64Data });
+        clearClinicProfileCache();
     }
 };

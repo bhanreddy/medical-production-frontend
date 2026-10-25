@@ -2,7 +2,7 @@ import api from '../lib/api';
 import type { Customer } from '../core/types';
 
 export const CustomerService = {
-    async addCustomer(input: { name: string; phone: string; email?: string; address?: string }): Promise<Customer> {
+    async addCustomer(input: { name: string; phone: string; email?: string; address?: string; credit_limit?: number }): Promise<Customer> {
         const res = await api.post('/customers', input);
         const data = res.data?.data;
         return {

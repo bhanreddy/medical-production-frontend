@@ -1,14 +1,15 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
+import { SessionRecovery } from './SessionRecovery';
 
 /** `/` had no matching route, so the root Outlet rendered nothing. Send users to login or their dashboard. */
 export function HomeRedirect() {
-  const { session, role, isLoading } = useAuth();
+  const { session, role, isLoading, isRecovering } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || isRecovering) return;
     if (!session) {
       navigate('/login', { replace: true });
       return;
@@ -18,7 +19,9 @@ export function HomeRedirect() {
       return;
     }
     navigate('/dashboard', { replace: true });
-  }, [isLoading, session, role, navigate]);
+  }, [isLoading, isRecovering, session, role, navigate]);
+
+  if (isRecovering) return <SessionRecovery />;
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center space-y-4">

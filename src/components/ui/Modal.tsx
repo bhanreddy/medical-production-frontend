@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { X } from 'lucide-react';
 import { useTabTrap, useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 
 interface ModalProps {
@@ -22,7 +23,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* OVERLAY */}
-            <div className="absolute inset-0 bg-overlay/80 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-overlay/50 backdrop-blur-sm" onClick={onClose} />
 
             {/* DIALOG */}
             <div
@@ -30,15 +31,18 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="modal-title"
-                className="relative w-full max-w-lg bg-surface border border-border rounded-lg shadow-2xl flex flex-col max-h-[90vh] animate-slideIn"
+                className="glass-dialog relative w-full max-w-lg bg-surface border border-border rounded-lg shadow-2xl flex flex-col max-h-[90vh] animate-slideIn"
             >
                 <div className="flex items-center justify-between p-6 border-b border-border">
-                    <h2 id="modal-title" className="text-xl font-bold text-foreground-strong uppercase tracking-tight">{title}</h2>
+                    <h2 id="modal-title" className="text-lg font-semibold text-foreground-strong">{title}</h2>
                     <button
                         onClick={onClose}
-                        className="text-muted hover:text-foreground-strong text-2xl font-light focus:outline-none focus:text-primary transition-colors"
+                        type="button"
+                        aria-label="Close dialog"
+                        title="Close dialog"
+                        className="h-8 w-8 shrink-0 rounded-md flex items-center justify-center text-muted hover:text-foreground-strong hover:bg-surface-alt transition-colors"
                     >
-                        ×
+                        <X size={18} aria-hidden />
                     </button>
                 </div>
 

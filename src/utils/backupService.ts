@@ -1,4 +1,5 @@
 import api from '../lib/api';
+import toast from 'react-hot-toast';
 
 /**
  * PHASE 10: BACKUP & RESTORE SERVICE
@@ -19,7 +20,8 @@ export const BackupService = {
             const data = res.data?.data;
             if (!data) throw new Error("No data returned from backend export.");
 
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            if (res.data.complete === false) toast.error(`Partial backup: database migration is needed for ${res.data.missingTables.join(', ')}.`);
+            const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
             console.log("[Backup] Export Successful");
             return blob;
         } catch (error) {
@@ -39,7 +41,7 @@ export const BackupService = {
             const text = await file.text();
             const parsed = JSON.parse(text);
 
-            const res = await api.post('/backup/import', { data: parsed });
+            const res = await api.post('/backup/import', { data: parsed.version === 2 ? parsed.data : parsed });
             if (!res.data?.success) {
                 throw new Error(res.data?.error || "Restore rejected by backend.");
             }

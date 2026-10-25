@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
+import { AuthFrame } from './AuthFrame';
 import { uiSlice } from '../../state/slices';
 import type { RootState } from '../../state/store';
 import { createSubscriptionOrder, type PlanId } from '../../services/subscriptionApi';
@@ -53,12 +53,7 @@ export function PaymentScreen({
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6 select-none font-sans">
-      <div className="w-full max-w-lg bg-surface/95 border border-border/80 rounded-2xl shadow-xl p-8 ring-1 ring-black/5 dark:ring-white/10">
-        <Badge variant="primary">Billing</Badge>
-        <h2 className="text-2xl font-black text-foreground-strong mt-3 tracking-tight uppercase italic">{title}</h2>
-        <p className="text-muted text-sm mt-2">{subtitle}</p>
-
+    <AuthFrame title={title} subtitle={subtitle}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8">
           {(
             [
@@ -70,7 +65,8 @@ export function PaymentScreen({
               key={p.id}
               type="button"
               onClick={() => setPlan(p.id)}
-              className={`text-left rounded-xl border p-4 transition-all ${
+              aria-pressed={plan === p.id}
+              className={`text-left rounded-lg border p-4 transition-colors ${
                 plan === p.id
                   ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
                   : 'border-border hover:border-border/80 bg-surface-elevated/60'
@@ -78,7 +74,6 @@ export function PaymentScreen({
             >
               <p className="text-xs font-black uppercase tracking-widest text-muted">{p.label}</p>
               <p className="text-sm font-bold text-foreground-strong mt-1">{p.hint}</p>
-              <p className="text-[11px] text-muted mt-2">Amount is set on the server for this plan.</p>
             </button>
           ))}
         </div>
@@ -106,12 +101,8 @@ export function PaymentScreen({
         </div>
 
         <p className="text-[11px] text-muted mt-6 leading-relaxed">
-          You will be redirected to PhonePe to complete payment. After paying, you will return to this app; the server
-          verifies status and activates your subscription. Configure the same return URL in PhonePe and in{' '}
-          <code className="text-foreground-strong">VITE_PHONEPE_RETURN_PATH</code> /{' '}
-          <code className="text-foreground-strong">PHONEPE_REDIRECT_URL</code>.
+          Complete your payment securely with PhonePe. Your subscription will activate once your payment is confirmed.
         </p>
-      </div>
-    </div>
+    </AuthFrame>
   );
 }

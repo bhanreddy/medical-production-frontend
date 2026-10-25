@@ -15,7 +15,7 @@ import {
     Cell,
 } from 'recharts';
 
-const COLORS = ['#22c55e', '#3b82f6', '#eab308', '#ef4444'];
+const COLORS = ['rgb(var(--primary))', 'rgb(var(--violet))', 'rgb(var(--warning))', 'rgb(var(--danger))'];
 
 type PaymentModeEntry = number | { count?: number; amount?: number };
 

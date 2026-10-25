@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../lib/api';
+import { fetchClinicProfile } from '../services/clinicProfileCache';
 import { BRANDING } from '../config/appContent';
 import { sanitizeUpiPayeeName } from '../lib/upiPaymentUri';
 
@@ -9,9 +9,9 @@ export function useShopDisplayName() {
 
     useEffect(() => {
         let mounted = true;
-        api.get('/clinics/me')
-            .then(res => {
-                const name = String(res.data?.data?.name ?? '').trim();
+        fetchClinicProfile()
+            .then(profile => {
+                const name = String(profile?.name ?? '').trim();
                 if (mounted && name) setShopName(sanitizeUpiPayeeName(name));
             })
             .catch(() => undefined);

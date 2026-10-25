@@ -37,7 +37,7 @@ export const InventoryScreen: React.FC = () => {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<InventoryViewMode>('active');
-    const { items: processedInventory, disposedItems, stats, isLoading, refresh } = useInventoryRadar(
+    const { items: processedInventory, disposedItems, stats, isLoading, error, refresh } = useInventoryRadar(
         searchTerm,
         attentionFilter,
         viewMode,
@@ -120,6 +120,7 @@ export const InventoryScreen: React.FC = () => {
                 </div>
             </div>
 
+            {error && <div role="alert" className="rounded-xl border border-danger p-4 text-danger">Inventory could not load. {error} <Button onClick={refresh}>Retry</Button></div>}
             <div className="flex gap-2">
                 <button
                     type="button"

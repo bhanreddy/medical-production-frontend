@@ -16,13 +16,19 @@ function isTauriRuntime(): boolean {
 async function getStore(): Promise<Store | null> {
   if (!isTauriRuntime()) return null;
   if (!storePromise) {
-    storePromise = load(STORE_FILENAME, { defaults: {}, autoSave: true }).catch(() => null);
+    storePromise = load(STORE_FILENAME, { defaults: {}, autoSave: true }).catch(
+      (error) => {
+        storePromise = null;
+        throw error;
+      },
+    );
   }
   return storePromise;
 }
 
 export const STORE_KEYS = {
   SUPABASE_SESSION: 'supabase_session_json',
+  AUTH_PROFILE: 'auth_profile_json',
   SUBSCRIPTION_CACHE: 'subscription_cache_json',
 } as const;
 
@@ -47,12 +53,12 @@ async function readRaw(key: string): Promise<string | null> {
   const s = await getStore();
   if (s) {
     const v = await s.get<string>(key);
-    return v ?? null;
+    if (v != null) return v;
   }
   try {
     return localStorage.getItem(key);
   } catch {
-    return null;
+    throw new Error('Saved session storage is temporarily unavailable.');
   }
 }
 
@@ -62,13 +68,19 @@ async function writeRaw(key: string, value: string | null): Promise<void> {
     if (value === null) await s.delete(key);
     else await s.set(key, value);
     await s.save();
+    // Remove the pre-Tauri browser copy after migration, including on sign out.
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* unavailable */
+    }
     return;
   }
   try {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, value);
   } catch {
-    /* ignore */
+    throw new Error('Saved session storage is temporarily unavailable.');
   }
 }
 
@@ -82,7 +94,10 @@ export async function readJson<T>(key: string): Promise<T | null> {
   }
 }
 
-export async function writeJson(key: string, value: unknown | null): Promise<void> {
+export async function writeJson(
+  key: string,
+  value: unknown | null,
+): Promise<void> {
   if (value === null) {
     await writeRaw(key, null);
     return;
@@ -94,7 +109,9 @@ export async function getPersistedSupabaseSession(): Promise<PersistedSupabaseSe
   return readJson<PersistedSupabaseSession>(STORE_KEYS.SUPABASE_SESSION);
 }
 
-export async function setPersistedSupabaseSession(session: PersistedSupabaseSession | null): Promise<void> {
+export async function setPersistedSupabaseSession(
+  session: PersistedSupabaseSession | null,
+): Promise<void> {
   await writeJson(STORE_KEYS.SUPABASE_SESSION, session);
 }
 
@@ -102,11 +119,21 @@ export async function getSubscriptionCache(): Promise<SubscriptionEntitlementCac
   return readJson<SubscriptionEntitlementCache>(STORE_KEYS.SUBSCRIPTION_CACHE);
 }
 
-export async function setSubscriptionCache(cache: SubscriptionEntitlementCache | null): Promise<void> {
+export async function setSubscriptionCache(
+  cache: SubscriptionEntitlementCache | null,
+): Promise<void> {
   await writeJson(STORE_KEYS.SUBSCRIPTION_CACHE, cache);
 }
 
 export async function clearAllAuthPersistence(): Promise<void> {
   await setPersistedSupabaseSession(null);
   await setSubscriptionCache(null);
+  await writeJson(STORE_KEYS.AUTH_PROFILE, null);
 }
+
+/** The SDK and application use the same durable storage, including in Tauri. */
+export const authStorage = {
+  getItem: readRaw,
+  setItem: (key: string, value: string) => writeRaw(key, value),
+  removeItem: (key: string) => writeRaw(key, null),
+};

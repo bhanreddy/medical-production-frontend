@@ -15,11 +15,11 @@ export const AdminLayout = () => {
     ];
 
     return (
-        <div className="flex h-screen bg-bg-primary text-foreground overflow-hidden">
+        <div className="admin-workspace flex h-screen bg-background text-foreground overflow-hidden">
             {/* Sidebar */}
             <aside className="w-64 bg-bg-surface border-r border-border flex flex-col">
                 <div className="p-6 border-b border-border">
-                    <h1 className="text-xl font-bold text-accent-primary">Medical POS</h1>
+                    <h1 className="text-lg font-semibold text-foreground-strong">Medical POS</h1>
                     <p className="text-xs text-muted mt-1 uppercase tracking-wider">Super Admin</p>
                 </div>
                 
@@ -31,6 +31,8 @@ export const AdminLayout = () => {
                             <Link
                                 key={link.path}
                                 to={link.path}
+                                title={link.name}
+                                aria-current={isActive ? 'page' : undefined}
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
                                     isActive 
                                         ? 'bg-accent-primary/10 text-accent-primary font-medium' 
@@ -38,7 +40,7 @@ export const AdminLayout = () => {
                                 }`}
                             >
                                 <Icon className="w-5 h-5" />
-                                {link.name}
+                                <span>{link.name}</span>
                             </Link>
                         );
                     })}
@@ -57,7 +59,7 @@ export const AdminLayout = () => {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto p-8 relative">
+            <main className="premium-content flex-1 min-w-0 overflow-y-auto relative">
                 <Outlet />
             </main>
         </div>

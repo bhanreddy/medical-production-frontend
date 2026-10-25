@@ -5,7 +5,7 @@ import { Building2, Users, Receipt, Activity } from 'lucide-react';
 import { BarChart, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export const AdminDashboard = () => {
-    const { data: stats, isLoading } = useQuery({
+    const { data: stats, isLoading, isError, refetch } = useQuery({
         queryKey: ['admin-stats'],
         queryFn: async () => {
             const { data } = await api.get('/admin/stats');
@@ -26,7 +26,9 @@ export const AdminDashboard = () => {
         );
     }
 
-    const COLORS = ['#00C9A7', '#0077B6', '#F59E0B'];
+    if (isError) return <div role="alert" className="p-6 space-y-4"><h1 className="text-xl font-semibold">Could not load this page</h1><p>Check your connection and try again.</p><button onClick={() => void refetch()}>Retry</button></div>;
+
+    const COLORS = ['rgb(var(--primary))', 'rgb(var(--violet))', 'rgb(var(--warning))'];
 
     return (
         <div className="space-y-8 max-w-7xl mx-auto">
@@ -84,7 +86,7 @@ export const AdminDashboard = () => {
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <Tooltip contentStyle={{ backgroundColor: '#0F1117', borderColor: '#ffffff1a' }} />
+                                <Tooltip contentStyle={{ backgroundColor: 'rgb(var(--surface))', borderColor: 'rgb(var(--border))', color: 'rgb(var(--foreground))', borderRadius: 12 }} />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>

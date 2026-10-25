@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
+import { Input } from '../ui/Input';
+import { Modal } from '../ui/Modal';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '../ui/Table';
@@ -11,8 +13,11 @@ import toast from 'react-hot-toast';
 export const AdminClinics = () => {
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
+    const [creating, setCreating] = useState(false);
+    const [name, setName] = useState('');
+    const createClinic = useMutation({ mutationFn: async () => api.post('/admin/clinics', { name }), onSuccess: () => { setCreating(false); setName(''); toast.success('Clinic created'); void queryClient.invalidateQueries({ queryKey: ['admin-clinics'] }); }, onError: () => toast.error('Could not create clinic. Please retry.') });
 
-    const { data: { data: clinics } = {}, isLoading } = useQuery({
+    const { data: { data: clinics } = {}, isLoading, isError, refetch } = useQuery({
         queryKey: ['admin-clinics'],
         queryFn: async () => {
             const { data } = await api.get('/admin/clinics');
@@ -24,13 +29,14 @@ export const AdminClinics = () => {
         mutationFn: async ({ id, is_active }: { id: string, is_active: boolean }) => {
             await api.patch(`/admin/clinics/${id}/status`, { is_active: !is_active });
         },
+        onError: () => toast.error('Could not update clinic status. Please retry.'),
         onSuccess: () => {
             toast.success('Clinic status updated');
             queryClient.invalidateQueries({ queryKey: ['admin-clinics'] });
         }
     });
 
-    const filterClinics = clinics?.filter((c: any) => c.name.toLowerCase().includes(search.toLowerCase())) || [];
+    const filterClinics = clinics?.filter((c: any) => (c.name || '').toLowerCase().includes(search.toLowerCase())) || [];
 
     const startImpersonating = (clinicId: string, clinicName: string) => {
         // Set impersonate clinic locally. 
@@ -39,11 +45,13 @@ export const AdminClinics = () => {
         sessionStorage.setItem('impersonate_clinic_name', clinicName);
         
         // Re-attach interceptor token logic if we want to dynamically attach header
-        api.defaults.headers.common['x-impersonate-clinic'] = clinicId;
+
         
         toast.success(`Impersonating ${clinicName}. Redirecting to POS Dashboard.`);
-        window.location.href = '/dashboard'; // Force a full navigation context swap
+        window.location.assign('/dashboard'); // Force a full navigation context swap
     };
+
+    if (isError) return <div role="alert" className="p-6 space-y-4"><h1 className="text-xl font-semibold">Could not load this page</h1><p>Check your connection and try again.</p><button onClick={() => void refetch()}>Retry</button></div>;
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
@@ -52,11 +60,12 @@ export const AdminClinics = () => {
                     <h1 className="text-2xl font-bold text-foreground">Clinics</h1>
                     <p className="text-muted">Manage tenant workspaces and subscriptions</p>
                 </div>
-                <Button variant="primary">
+                <Button variant="primary" onClick={() => setCreating(true)}> 
                     + Create Clinic
                 </Button>
             </div>
 
+            <Modal isOpen={creating} onClose={() => setCreating(false)} title="Create clinic"><form className="space-y-4" onSubmit={event => { event.preventDefault(); if (name.trim()) createClinic.mutate(); }}><Input label="Clinic name" value={name} onChange={event => setName(event.target.value)} required maxLength={200} /><Button type="submit" isLoading={createClinic.isPending}>Create clinic</Button></form></Modal>
             <Card className="p-4">
                 <div className="flex gap-4 mb-4">
                     <div className="relative flex-1 max-w-md">
@@ -106,7 +115,7 @@ export const AdminClinics = () => {
                                             {clinic.is_active ? 'Active' : 'Disabled'}
                                         </span>
                                     </TableCell>
-                                    <TableCell className="px-4 py-3 text-muted text-sm">{format(new Date(clinic.created_at), 'MMM dd, yyyy')}</TableCell>
+                                    <TableCell className="px-4 py-3 text-muted text-sm">{clinic.created_at && !Number.isNaN(Date.parse(clinic.created_at)) ? format(new Date(clinic.created_at), 'MMM dd, yyyy') : '—'}</TableCell>
                                     <TableCell className="px-4 py-3 flex items-center justify-end gap-2">
                                         <Button size="sm" variant="ghost" onClick={() => startImpersonating(clinic.id, clinic.name)}>
                                             <ShieldAlert className="w-4 h-4 mr-2" />

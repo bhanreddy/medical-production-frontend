@@ -16,30 +16,35 @@ const REPORTS = [
         title: 'Sales report',
         desc: 'Invoice-wise GST and payment summary for any period.',
         icon: LineChartIcon,
+        tone: 'sapphire',
     },
     {
         id: 'purchase',
         title: 'Purchase report',
         desc: 'Inward value, ITC alignment, and supplier mix.',
         icon: ShoppingCart,
+        tone: 'blue',
     },
     {
         id: 'expense',
         title: 'Expense report',
         desc: 'Category burn and voucher trail for audits.',
         icon: Wallet,
+        tone: 'amber',
     },
     {
         id: 'gst',
         title: 'GST report',
         desc: 'GSTR-friendly totals with intra / inter split.',
         icon: FileText,
+        tone: 'violet',
     },
     {
         id: 'pnl',
         title: 'Profit & loss',
         desc: 'Revenue, COGS, and margin at shop level.',
         icon: PieChart,
+        tone: 'violet',
     },
 ] as const;
 
@@ -280,11 +285,12 @@ export const ReportsHubPage: React.FC = () => {
                             key={r.id}
                             type="button"
                             onClick={() => setSelected(r.id)}
-                            className={`text-left rounded-xl border-2 p-5 transition-all hover:shadow-lg ${
+                            aria-pressed={active}
+                            className={`report-option text-left rounded-xl border-2 p-5 transition-all hover:shadow-lg ${
                                 active ? 'border-primary bg-primary/5 shadow-md' : 'border-border bg-bg-surface hover:border-primary/40'
                             }`}
                         >
-                            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/15 text-primary mb-3">
+                            <div className={`dashboard-symbol tone-${r.tone} mb-3`}>
                                 <Icon className="w-6 h-6" />
                             </div>
                             <h2 className="font-black text-foreground-strong tracking-tight">{r.title}</h2>

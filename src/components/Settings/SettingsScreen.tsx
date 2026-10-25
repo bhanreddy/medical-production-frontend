@@ -189,8 +189,8 @@ export const SettingsScreen: React.FC = () => {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 min-w-0 lg:grid-cols-3 gap-4 sm:gap-6 auto-rows-min">
-                <Card className="p-4 sm:p-6 flex flex-col gap-4 min-w-0 lg:col-span-2">
+            <div className="grid grid-cols-1 min-w-0 xl:grid-cols-3 gap-4 sm:gap-6 auto-rows-min">
+                <Card className="p-4 sm:p-6 flex flex-col gap-4 min-w-0 xl:col-span-2">
                     <MedicalProfileCard />
                 </Card>
 
@@ -205,11 +205,16 @@ export const SettingsScreen: React.FC = () => {
                             <p className="text-xs text-muted mt-1">Controls FEFO allocation behavior.</p>
                         </div>
                         <Button
+                            role="switch"
+                            aria-checked={allowExpiredSale}
+                            aria-label="Allow expired sale"
                             variant={allowExpiredSale ? 'danger' : 'secondary'}
                             onClick={toggleAllowExpiredSale}
                             disabled={isLoading}
                         >
-                            {allowExpiredSale ? 'On' : 'Off'}
+                            <span className={`relative inline-flex h-5 w-9 rounded-full ${allowExpiredSale ? 'bg-white/25' : 'bg-border'}`} aria-hidden>
+                                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${allowExpiredSale ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                            </span>
                         </Button>
                     </div>
                 </Card>
@@ -241,7 +246,7 @@ export const SettingsScreen: React.FC = () => {
                     </div>
                 </Card>
 
-                <Card className="p-4 sm:p-6 flex flex-col gap-4 min-w-0 lg:col-span-3">
+                <Card className="p-4 sm:p-6 flex flex-col gap-4 min-w-0 xl:col-span-3">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                         <h2 className="text-sm font-bold text-muted uppercase tracking-wider">Stock alerts</h2>
                         <Badge variant="primary">IndexedDB</Badge>
@@ -273,7 +278,7 @@ export const SettingsScreen: React.FC = () => {
                     </div>
                 </Card>
 
-                <Card className="p-4 sm:p-6 flex flex-col gap-4 min-w-0 lg:col-span-3">
+                <Card className="p-4 sm:p-6 flex flex-col gap-4 min-w-0 xl:col-span-3">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                         <h2 className="text-sm font-bold text-muted uppercase tracking-wider">Payment settings</h2>
                         <Badge variant="primary">UPI</Badge>
@@ -320,7 +325,7 @@ export const SettingsScreen: React.FC = () => {
                     </div>
                 </Card>
 
-                <Card className="p-4 sm:p-6 flex flex-col gap-3 min-w-0 lg:col-span-3 border-dashed opacity-95">
+                <Card className="p-4 sm:p-6 flex flex-col gap-3 min-w-0 xl:col-span-3 border-dashed opacity-95">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                         <h2 className="text-sm font-bold text-muted uppercase tracking-wider">Cloud backup</h2>
                         <Badge variant="warning">Coming soon</Badge>

@@ -17,6 +17,7 @@ export const P = {
     route_customers: 'route:customers',
     route_tele: 'route:tele_consultation',
     route_delivery: 'route:doorstep_delivery',
+    route_orders: 'route:orders_hub',
     action_manage_users: 'action:manage_users',
 } as const;
 
@@ -38,6 +39,7 @@ const ALL_ROUTES: PermissionId[] = [
     P.route_customers,
     P.route_tele,
     P.route_delivery,
+    P.route_orders,
 ];
 
 export const ROLE_PRESETS: Record<RoleName, PermissionId[]> = {
@@ -50,6 +52,7 @@ export const ROLE_PRESETS: Record<RoleName, PermissionId[]> = {
         P.route_expiry_alerts,
         P.route_tele,
         P.route_delivery,
+        P.route_orders,
     ],
 };
 
@@ -70,6 +73,7 @@ export const NAV_ID_PERMISSION: Record<string, PermissionId> = {
     customers: P.route_customers,
     tele_consultation: P.route_tele,
     doorstep_delivery: P.route_delivery,
+    orders_hub: P.route_orders,
 };
 
 export function canAccessNavId(permissions: string[] | undefined, navId: string | undefined | null): boolean {

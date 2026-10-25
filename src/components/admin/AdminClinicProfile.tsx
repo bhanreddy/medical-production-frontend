@@ -36,7 +36,7 @@ export const AdminClinicProfile: React.FC = () => {
     const logoInputRef = useRef<HTMLInputElement>(null);
     const signatureInputRef = useRef<HTMLInputElement>(null);
 
-    const { data: clinicData, isLoading } = useQuery({
+    const { data: clinicData, isLoading, isError, refetch } = useQuery({
         queryKey: ['admin-clinic-profile', medical_id],
         queryFn: async () => {
             const { data } = await api.get(`/admin/clinics/${medical_id}/profile`);
@@ -84,8 +84,8 @@ export const AdminClinicProfile: React.FC = () => {
         mutationFn: async (values: ProfileFormValues) => {
             const payload = {
                 ...values,
-                logo_url: logoBase64 || undefined,
-                signature_url: signatureBase64 || undefined,
+                logo_url: logoBase64,
+                signature_url: signatureBase64,
             };
             const { data } = await api.put(`/admin/clinics/${medical_id}/profile`, payload);
             return data;
@@ -104,12 +104,13 @@ export const AdminClinicProfile: React.FC = () => {
     const handleFileUpload = (file: File | null, type: 'logo' | 'signature') => {
         if (!file) return;
 
-        // 2MB limit
-        if (file.size > 2 * 1024 * 1024) {
-            toast.error('Image is too large. Max 2MB allowed.');
+        // Two base64 images must fit the API request body.
+        if (file.size > 500 * 1024) {
+            toast.error('Image is too large. Max 500KB allowed.');
             return;
         }
 
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { toast.error('Use a PNG, JPEG, or WebP image.'); return; }
         const reader = new FileReader();
         reader.onload = (e) => {
             const base64 = e.target?.result as string;
@@ -121,6 +122,8 @@ export const AdminClinicProfile: React.FC = () => {
         };
         reader.readAsDataURL(file);
     };
+
+    if (isError) return <div role="alert" className="p-6 space-y-4"><h1 className="text-xl font-semibold">Could not load this page</h1><p>Check your connection and try again.</p><button onClick={() => void refetch()}>Retry</button></div>;
 
     if (isLoading) {
         return <div className="p-8 text-center text-muted">Loading profile...</div>;

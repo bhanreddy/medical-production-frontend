@@ -1,194 +1,618 @@
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { format, formatDistanceToNow } from 'date-fns';
+import {
+  ArrowDownLeft,
+  ArrowRight,
+  ArrowUpRight,
+  CalendarDays,
+  ChevronRight,
+  CirclePlus,
+  Clock3,
+  Package,
+  ReceiptText,
+  RefreshCw,
+  ShieldCheck,
+  Users,
+  Wallet,
+  ChartNoAxesCombined,
+  Activity,
+} from 'lucide-react';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+} from 'recharts';
 import { useClinicDashboardData } from '../../hooks/useClinicDashboardData';
-import { Card } from '../ui/Card';
 import { useAuth } from '../../lib/auth';
-import { format } from 'date-fns';
-import { IndianRupee, ReceiptText, TrendingUp, Users } from 'lucide-react';
-import { BarChart, Bar, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
-import { Table, TableBody, TableCell, TableHeader, TableRow } from '../ui/Table';
+import { LiquidSurface } from '../glass/LiquidGlass';
 
-type DashboardRecentSale = {
+export interface DashboardData {
+  today_revenue?: number | string;
+  today_bills?: number;
+  week_revenue?: number | string;
+  outstanding_receivable?: number | string;
+  outstanding_payable?: number | string;
+  low_stock_count?: number;
+  expiry_count_30d?: number;
+  shortbook_count?: number;
+  alerts?: { low_stock?: number; expiring?: number; shortbook?: number };
+  daily_chart?: { date: string; revenue: number; bills?: number }[];
+  weekly_chart?: { day: string; revenue: number }[];
+  recent_sales?: {
     id: string;
     invoice_number?: string;
-    net_amount?: string | number;
+    net_amount?: number | string;
+    created_at?: string;
+    payment_mode?: string;
     customers?: { name?: string | null } | null;
-};
+  }[];
+}
+const currencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+});
+const currency = (value: unknown) => currencyFormatter.format(Number(value) || 0);
+
+export function ClinicDashboardView({
+  data,
+  name = 'there',
+  loading = false,
+  error = false,
+  refreshing = false,
+  onRefresh,
+}: {
+  data?: DashboardData;
+  name?: string;
+  loading?: boolean;
+  error?: boolean;
+  refreshing?: boolean;
+  onRefresh?: () => void;
+}) {
+  const [chartStyle, setChartStyle] = useState<'area' | 'line'>('area');
+  const unavailable = error && !data;
+  const bills = Number(data?.today_bills || 0);
+  const chart =
+    data?.daily_chart?.map((point) => ({
+      day: point.date
+        ? format(new Date(`${point.date.slice(0, 10)}T12:00:00`), 'EEE')
+        : '',
+      date: point.date?.slice(0, 10) ?? '',
+      revenue: Number(point.revenue) || 0,
+      bills: Number(point.bills) || 0,
+    })) ||
+    data?.weekly_chart?.map((point) => ({
+      day: point.day,
+      date: '',
+      revenue: Number(point.revenue) || 0,
+      bills: 0,
+    })) ||
+    [];
+  const attention = [
+    {
+      label: 'Low stock',
+      hint: 'Medicines to replenish',
+      count: data?.alerts?.low_stock ?? data?.low_stock_count ?? 0,
+      icon: Package,
+      tone: 'amber',
+      path: '/inventory?focus=low_stock',
+    },
+    {
+      label: 'Expiring soon',
+      hint: 'Batches within 30 days',
+      count: data?.alerts?.expiring ?? data?.expiry_count_30d ?? 0,
+      icon: Clock3,
+      tone: 'rose',
+      path: '/inventory?focus=expiring',
+    },
+    {
+      label: 'Reorder queue',
+      hint: 'Items in your shortbook',
+      count: data?.alerts?.shortbook ?? data?.shortbook_count ?? 0,
+      icon: ReceiptText,
+      tone: 'violet',
+      path: '/shortbook',
+    },
+  ];
+  const alertTotal = attention.reduce(
+    (sum, item) => sum + (Number(item.count) || 0),
+    0,
+  );
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const value = (amount: unknown) =>
+    loading ? (
+      <span className="liquid-skeleton" />
+    ) : error && !data ? (
+      '—'
+    ) : (
+      currency(amount)
+    );
+  return (
+    <div className="liquid-dashboard" aria-busy={loading}>
+      <div className="dashboard-heading">
+        <div>
+          <div className="dashboard-eyebrow">
+            <Activity size={13} className="brand-star" aria-hidden /> PHARMACY OVERVIEW
+          </div>
+          <h1>
+            {greeting}, <span>{name}.</span>
+          </h1>
+          <p>Here is how your pharmacy is doing today.</p>
+          {refreshing && !loading && (
+            <p className="dashboard-heading-status" aria-live="polite">
+              Updating your latest figures…
+            </p>
+          )}
+        </div>
+        <div className="dashboard-heading-actions">
+          <span className="dashboard-date">
+            <CalendarDays size={15} />
+            {format(new Date(), 'EEE, dd MMM')}
+          </span>
+          <button
+            className="liquid-icon-button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            aria-label="Refresh dashboard"
+            title="Refresh dashboard"
+          >
+            <RefreshCw
+              size={17}
+              className={refreshing ? 'dashboard-spinning' : ''}
+            />
+          </button>
+        </div>
+      </div>
+      {!loading && !unavailable && alertTotal > 0 && (
+        <div className="dashboard-attention-banner" role="status">
+          <span className="status-dot" aria-hidden />
+          <span>
+            <strong>{alertTotal.toLocaleString('en-IN')}</strong> inventory
+            {alertTotal === 1 ? ' item needs' : ' items need'} your attention.
+          </span>
+          <Link to="/inventory?focus=low_stock">Review stock</Link>
+        </div>
+      )}
+      {error && (
+        <div className="dashboard-error" role="alert">
+          We couldn’t refresh your dashboard.{' '}
+          {data
+            ? 'Your last available figures are shown.'
+            : 'Please try again.'}
+          <button onClick={onRefresh}>
+            Retry <RefreshCw size={13} />
+          </button>
+        </div>
+      )}
+      <div className="dashboard-overview">
+        <LiquidSurface className="dashboard-revenue liquid-refractive">
+          <div className="dashboard-card-heading">
+            <span>
+              <span className="status-dot" /> TODAY AT A GLANCE
+            </span>
+            <ReceiptText size={19} />
+          </div>
+          <div className="revenue-label">Today’s revenue</div>
+          <div className="revenue-value">{value(data?.today_revenue)}</div>
+          <p className="revenue-caption">
+            Sales recorded across today’s invoices.
+          </p>
+          <div className="revenue-footer">
+            <div>
+              <span>Invoices created</span>
+              <strong>
+                {loading || unavailable ? '—' : bills.toLocaleString('en-IN')}{' '}
+                <span>bills</span>
+              </strong>
+            </div>
+            <div>
+              <span>Average bill</span>
+              <strong>
+                {value(bills ? Number(data?.today_revenue || 0) / bills : 0)}
+              </strong>
+            </div>
+            <Link to="/billing/new" className="liquid-primary-button">
+              <CirclePlus size={18} /> New sale <ArrowUpRight size={16} />
+            </Link>
+          </div>
+        </LiquidSurface>
+        <LiquidSurface className="dashboard-trend">
+          <div className="dashboard-section-heading">
+            <div>
+              <p className="dashboard-eyebrow">YOUR LAST SEVEN DAYS</p>
+              <h2>Revenue flow</h2>
+            </div>
+            <div
+              className="liquid-segment"
+              role="group"
+              aria-label="Chart display"
+            >
+              <button
+                aria-label="Area chart"
+                aria-pressed={chartStyle === 'area'}
+                onClick={() => setChartStyle('area')}
+              >
+                Area
+              </button>
+              <button
+                aria-label="Line chart"
+                aria-pressed={chartStyle === 'line'}
+                onClick={() => setChartStyle('line')}
+              >
+                Line
+              </button>
+            </div>
+          </div>
+          <div className="trend-number">
+            {value(data?.week_revenue)} <span>this week</span>
+          </div>
+          <div
+            className="dashboard-chart"
+            role="img"
+            aria-label={
+              unavailable
+                ? 'Revenue is unavailable'
+                : loading
+                  ? 'Revenue chart is loading'
+                  : `Revenue for the past week: ${currency(data?.week_revenue)}`
+            }
+          >
+            {loading ? (
+              <div className="liquid-skeleton chart-skeleton" />
+            ) : chart.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={chart}
+                  margin={{ top: 12, right: 5, bottom: 0, left: 5 }}
+                >
+                  <defs>
+                    <linearGradient
+                      id="revenue-fill"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor="var(--liquid-accent)"
+                        stopOpacity={chartStyle === 'area' ? 0.3 : 0}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="var(--liquid-accent)"
+                        stopOpacity="0"
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    vertical={false}
+                    stroke="var(--liquid-grid)"
+                    strokeDasharray="3 6"
+                  />
+                  <XAxis
+                    dataKey="day"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: 'var(--liquid-muted)', fontSize: 10 }}
+                    dy={5}
+                    minTickGap={15}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const row = payload[0].payload as {
+                        day: string;
+                        date?: string;
+                        revenue: number;
+                        bills?: number;
+                      };
+                      const label = row.date
+                        ? format(
+                            new Date(`${row.date}T12:00:00`),
+                            'EEE, dd MMM',
+                          )
+                        : row.day;
+                      return (
+                        <div className="dashboard-chart-tooltip">
+                          <span className="dashboard-chart-tooltip-label">
+                            {label}
+                          </span>
+                          <strong>{currency(row.revenue)}</strong>
+                          {typeof row.bills === 'number' && row.bills > 0 && (
+                            <span>
+                              {row.bills} bill{row.bills === 1 ? '' : 's'}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="var(--liquid-accent)"
+                    strokeWidth={chartStyle === 'line' ? 3 : 2.5}
+                    fill={
+                      chartStyle === 'area' ? 'url(#revenue-fill)' : 'none'
+                    }
+                    dot={
+                      chartStyle === 'line'
+                        ? { r: 3, strokeWidth: 2, fill: 'var(--liquid-tooltip)' }
+                        : false
+                    }
+                    activeDot={{
+                      r: 5,
+                      stroke: 'var(--liquid-tooltip)',
+                      strokeWidth: 3,
+                    }}
+                    isAnimationActive={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="dashboard-chart-empty">
+                <ChartNoAxesCombined size={25} />
+                <p>
+                  {unavailable
+                    ? 'Revenue is unavailable. Refresh to try again.'
+                    : 'Your revenue story starts with your first sale.'}
+                </p>
+              </div>
+            )}
+          </div>
+        </LiquidSurface>
+      </div>
+      <div className="dashboard-financials">
+        {[
+          {
+            label: 'Week’s revenue',
+            amount: data?.week_revenue,
+            hint: 'Your last seven days',
+            icon: ChartNoAxesCombined,
+            tone: 'violet',
+            path: '/analytics',
+          },
+          {
+            label: 'To collect',
+            amount: data?.outstanding_receivable,
+            hint: 'Outstanding from customers',
+            icon: ArrowDownLeft,
+            tone: 'blue',
+            path: '/customers',
+          },
+          {
+            label: 'To pay',
+            amount: data?.outstanding_payable,
+            hint: 'Outstanding to suppliers',
+            icon: ArrowUpRight,
+            tone: 'amber',
+            path: '/suppliers',
+          },
+        ].map((metric) => (
+          <Link
+            key={metric.label}
+            to={metric.path}
+            className="dashboard-metric-link"
+            aria-label={`${metric.label}: ${loading || unavailable ? 'loading' : currency(metric.amount)}. ${metric.hint}`}
+          >
+            <LiquidSurface
+              className={`dashboard-metric metric-${metric.tone}`}
+            >
+              <div className={`dashboard-symbol tone-${metric.tone}`}>
+                <metric.icon size={21} strokeWidth={1.6} />
+              </div>
+              <div>
+                <span>{metric.label}</span>
+                <strong>{value(metric.amount)}</strong>
+                <small>{metric.hint}</small>
+              </div>
+              <span className="metric-link" aria-hidden>
+                <ArrowUpRight size={18} />
+              </span>
+            </LiquidSurface>
+          </Link>
+        ))}
+      </div>
+      <div className="dashboard-section-heading dashboard-actions-title">
+        <h2>Quick actions</h2>
+        <span>YOUR EVERYDAY ESSENTIALS</span>
+      </div>
+      <LiquidSurface className="dashboard-quick-actions">
+        {[
+          {
+            label: 'Create invoice',
+            sub: 'Start a new sale',
+            icon: ReceiptText,
+            to: '/billing/new',
+            tone: 'violet',
+          },
+          {
+            label: 'Manage stock',
+            sub: 'Products & availability',
+            icon: Package,
+            to: '/inventory',
+            tone: 'blue',
+          },
+          {
+            label: 'Customers',
+            sub: 'Balances & history',
+            icon: Users,
+            to: '/customers',
+            tone: 'violet',
+          },
+          {
+            label: 'View reports',
+            sub: 'Know your numbers',
+            icon: Wallet,
+            to: '/reports',
+            tone: 'amber',
+          },
+        ].map((action) => (
+          <Link to={action.to} key={action.label}>
+            <div className={`dashboard-symbol tone-${action.tone}`}>
+              <action.icon size={20} strokeWidth={1.6} />
+            </div>
+            <div>
+              <strong>{action.label}</strong>
+              <small>{action.sub}</small>
+            </div>
+            <ArrowUpRight size={15} className="quick-action-arrow" />
+          </Link>
+        ))}
+      </LiquidSurface>
+      <div className="dashboard-bottom-grid">
+        <LiquidSurface className="dashboard-activity">
+          <div className="dashboard-section-heading">
+            <div>
+              <p className="dashboard-eyebrow">THE LATEST</p>
+              <h2>Recent sales</h2>
+            </div>
+            <Link className="dashboard-text-link" to="/billing">
+              All invoices <ArrowRight size={15} />
+            </Link>
+          </div>
+          <div className="dashboard-sales-table">
+            <div className="dashboard-sales-table-head">
+              <span>INVOICE & CUSTOMER</span>
+              <span>PAYMENT</span>
+              <span>AMOUNT</span>
+            </div>
+            {loading ? (
+              [0, 1, 2].map((i) => (
+                <div className="liquid-skeleton sale-skeleton" key={i} />
+              ))
+            ) : data?.recent_sales?.length ? (
+              data.recent_sales.slice(0, 5).map((sale) => (
+                <Link to="/billing" key={sale.id} className="dashboard-sale">
+                  <div className="sale-identity">
+                    <div className="sale-icon">
+                      <ReceiptText size={17} />
+                    </div>
+                    <div>
+                      <strong>{sale.invoice_number || 'Invoice'}</strong>
+                      <span>
+                        {sale.customers?.name || 'Walk-in customer'}
+                        {sale.created_at
+                          ? ` · ${formatDistanceToNow(new Date(sale.created_at), { addSuffix: true })}`
+                          : ''}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="sale-payment">
+                    {sale.payment_mode || 'Sale'}
+                  </span>
+                  <strong className="sale-amount">
+                    {currency(sale.net_amount)} <ChevronRight size={14} />
+                  </strong>
+                </Link>
+              ))
+            ) : (
+              <div className="dashboard-empty">
+                <ReceiptText size={26} />
+                <h3>
+                  {unavailable ? 'Sales are unavailable.' : 'A fresh start.'}
+                </h3>
+                <p>
+                  {unavailable
+                    ? 'Refresh the dashboard to try again.'
+                    : 'Your latest sales will appear here.'}
+                </p>
+                {!unavailable && (
+                  <Link to="/billing/new">
+                    Create your first invoice <ArrowRight size={14} />
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        </LiquidSurface>
+        <LiquidSurface className="dashboard-attention">
+          <div className="dashboard-section-heading">
+            <div>
+              <p className="dashboard-eyebrow">INVENTORY HEALTH</p>
+              <h2>Stock alerts</h2>
+            </div>
+            <ShieldCheck size={21} className="attention-shield" />
+          </div>
+          <div className="attention-items">
+            {attention.map((item) => {
+              const count = Number(item.count) || 0;
+              const hasAlerts = !loading && !unavailable && count > 0;
+              return (
+                <Link
+                  to={item.path}
+                  className="attention-item"
+                  key={item.label}
+                >
+                  <div className={`dashboard-symbol tone-${item.tone}`}>
+                    <item.icon size={18} strokeWidth={1.7} />
+                  </div>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <small>{item.hint}</small>
+                  </div>
+                  <span
+                    className={[
+                      'attention-count',
+                      `tone-${item.tone}`,
+                      hasAlerts ? 'attention-count--active' : '',
+                      !hasAlerts && !loading && !unavailable
+                        ? 'attention-count--clear'
+                        : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                  >
+                    {loading || unavailable ? '—' : count}
+                  </span>
+                  <ChevronRight size={13} />
+                </Link>
+              );
+            })}
+          </div>
+          <div className="attention-note">
+            <span
+              className={`status-dot${alertTotal === 0 && !loading && !unavailable ? ' status-dot--success' : ''}`}
+            />
+            <span>
+              {loading || unavailable
+                ? 'Review stock levels and upcoming expiry dates.'
+                : alertTotal === 0
+                  ? 'Stock levels look healthy — no urgent alerts right now.'
+                  : 'Review stock levels and upcoming expiry dates.'}
+            </span>
+          </div>
+        </LiquidSurface>
+      </div>
+      <footer className="dashboard-footer">
+        <ShieldCheck size={13} className="brand-star" aria-hidden /> Pharmacy overview
+        <span>{format(new Date(), 'dd MMMM yyyy')}</span>
+      </footer>
+    </div>
+  );
+}
 
 export const ClinicDashboard = () => {
-    const { user } = useAuth();
-    const navigate = useNavigate();
-
-    const { data: dashData, isLoading } = useClinicDashboardData();
-
-    const alerts = {
-        low_stock: Number(dashData?.alerts && typeof dashData.alerts === 'object' && 'low_stock' in dashData.alerts
-            ? (dashData.alerts as { low_stock?: number }).low_stock
-            : dashData?.low_stock_count ?? 0),
-        expiring: Number(
-            dashData?.alerts && typeof dashData.alerts === 'object' && 'expiring' in dashData.alerts
-                ? (dashData.alerts as { expiring?: number }).expiring
-                : dashData?.expiry_count_30d ?? 0,
-        ),
-        shortbook: Number(
-            dashData?.alerts && typeof dashData.alerts === 'object' && 'shortbook' in dashData.alerts
-                ? (dashData.alerts as { shortbook?: number }).shortbook
-                : dashData?.shortbook_count ?? 0,
-        ),
-    };
-
-    return (
-        <div className="space-y-8 p-8 max-w-7xl mx-auto">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-foreground">Good morning, {user?.full_name?.split(' ')[0]}</h1>
-                <p className="text-muted">{format(new Date(), 'EEEE, MMMM do, yyyy')}</p>
-            </div>
-
-            {/* KPI Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-6">
-                    <div className="flex items-center gap-2 text-muted uppercase text-xs font-bold tracking-wider mb-2">
-                        <IndianRupee className="w-4 h-4 text-accent-primary" /> Today's Revenue
-                    </div>
-                    {isLoading ? <div className="h-8 bg-bg-card animate-pulse rounded" /> : (
-                        <div className="text-3xl font-black">₹{(dashData?.today_revenue as string | number | undefined) || '0.00'}</div>
-                    )}
-                </Card>
-                <Card className="p-6">
-                    <div className="flex items-center gap-2 text-muted uppercase text-xs font-bold tracking-wider mb-2">
-                        <ReceiptText className="w-4 h-4 text-accent-secondary" /> Today's Bills
-                    </div>
-                    {isLoading ? <div className="h-8 bg-bg-card animate-pulse rounded" /> : (
-                        <div className="text-3xl font-black">{Number(dashData?.today_bills ?? 0)}</div>
-                    )}
-                </Card>
-                <Card className="p-6">
-                    <div className="flex items-center gap-2 text-muted uppercase text-xs font-bold tracking-wider mb-2">
-                        <TrendingUp className="w-4 h-4 text-success" /> Week Revenue
-                    </div>
-                    {isLoading ? <div className="h-8 bg-bg-card animate-pulse rounded" /> : (
-                        <div className="text-3xl font-black">₹{(dashData?.week_revenue as string | number | undefined) || '0.00'}</div>
-                    )}
-                </Card>
-                <Card className="p-6">
-                    <div className="flex items-center gap-2 text-muted uppercase text-xs font-bold tracking-wider mb-2">
-                        <Users className="w-4 h-4 text-danger" /> Outstanding
-                    </div>
-                    {isLoading ? <div className="h-8 bg-bg-card animate-pulse rounded" /> : (
-                        <div className="text-3xl font-black">
-                            ₹
-                            {(
-                                Number(dashData?.outstanding_receivable ?? 0) + Number(dashData?.outstanding_payable ?? 0)
-                            ).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
-                    )}
-                </Card>
-            </div>
-
-            {/* Alert Strip — navigate to filtered inventory or shortbook */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button
-                    type="button"
-                    onClick={() => navigate('/inventory?focus=low_stock')}
-                    className="text-left w-full bg-danger/10 border border-danger/30 rounded-lg p-4 flex justify-between items-center group cursor-pointer hover:bg-danger/20 transition-colors"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-danger shrink-0" />
-                        <span className="font-semibold text-danger">Low Stock: {alerts.low_stock} medicines</span>
-                    </div>
-                    <span className="text-danger opacity-0 group-hover:opacity-100 transition-opacity text-sm font-bold shrink-0">
-                        View All &rarr;
-                    </span>
-                </button>
-                <button
-                    type="button"
-                    onClick={() => navigate('/inventory?focus=expiring')}
-                    className="text-left w-full bg-warning/10 border border-warning/30 rounded-lg p-4 flex justify-between items-center group cursor-pointer hover:bg-warning/20 transition-colors"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-warning shrink-0" />
-                        <span className="font-semibold text-warning">Expiring: {alerts.expiring} batches</span>
-                    </div>
-                    <span className="text-warning opacity-0 group-hover:opacity-100 transition-opacity text-sm font-bold shrink-0">
-                        View All &rarr;
-                    </span>
-                </button>
-                <button
-                    type="button"
-                    onClick={() => navigate('/shortbook')}
-                    className="text-left w-full bg-success/10 border border-success/30 rounded-lg p-4 flex justify-between items-center group cursor-pointer hover:bg-success/20 transition-colors"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-success shrink-0" />
-                        <span className="font-semibold text-success">Shortbook: {alerts.shortbook} items</span>
-                    </div>
-                    <span className="text-success opacity-0 group-hover:opacity-100 transition-opacity text-sm font-bold shrink-0">
-                        View All &rarr;
-                    </span>
-                </button>
-            </div>
-
-            {/* Charts & Tables */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <Card className="p-6">
-                    <h3 className="text-lg font-bold mb-6">Recent Sales</h3>
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableCell className="pb-2 text-muted">Invoice</TableCell>
-                                    <TableCell className="pb-2 text-muted">Customer</TableCell>
-                                    <TableCell className="pb-2 text-muted text-right">Amount</TableCell>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {isLoading ? (
-                                    Array.from({ length: 5 }).map((_, i) => (
-                                        <TableRow key={i}><TableCell colSpan={3} className="py-2"><div className="h-4 bg-bg-card rounded animate-pulse" /></TableCell></TableRow>
-                                    ))
-                                ) : ((dashData?.recent_sales as DashboardRecentSale[] | undefined) ?? []).map((sale) => (
-                                    <TableRow key={sale.id} className="border-b border-border/50 last:border-0 hover:bg-bg-primary">
-                                        <TableCell className="py-3 font-mono text-sm">{sale.invoice_number}</TableCell>
-                                        <TableCell className="py-3">{sale.customers?.name || 'Walk-in'}</TableCell>
-                                        <TableCell className="py-3 text-right font-medium text-accent-primary">₹{sale.net_amount}</TableCell>
-                                    </TableRow>
-                                ))}
-                                {!isLoading && ((dashData?.recent_sales as any[]) || []).length === 0 && (
-                                    <TableRow><TableCell colSpan={3} className="text-center py-4 text-muted">No recent sales</TableCell></TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </Card>
-
-                <Card className="p-6">
-                    <h3 className="text-lg font-bold mb-6">Weekly Revenue</h3>
-                    <div className="h-64">
-                        {isLoading ? <div className="w-full h-full bg-bg-card animate-pulse rounded" /> : (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart
-                                    data={(() => {
-                                        const wc = dashData?.weekly_chart;
-                                        if (Array.isArray(wc) && wc.length) return wc as { day?: string; revenue?: number }[];
-                                        const dc = dashData?.daily_chart;
-                                        if (Array.isArray(dc) && dc.length) {
-                                            return (dc as { date?: string; revenue?: number }[]).map((d) => ({
-                                                day: d.date?.slice(5) ?? '',
-                                                revenue: Number(d.revenue ?? 0),
-                                            }));
-                                        }
-                                        return [];
-                                    })()}
-                                >
-                                    <XAxis dataKey="day" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                                    <Tooltip cursor={{ fill: '#ffffff0a' }} contentStyle={{ backgroundColor: '#0F1117', borderColor: '#ffffff1a' }} />
-                                    <Bar dataKey="revenue" fill="#00C9A7" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        )}
-                    </div>
-                </Card>
-            </div>
-        </div>
-    );
+  const { user } = useAuth();
+  const { data, isLoading, isError, refetch, isFetching } =
+    useClinicDashboardData();
+  return (
+    <ClinicDashboardView
+      data={data}
+      name={user?.full_name?.split(' ')[0] || 'there'}
+      loading={isLoading}
+      error={isError}
+      refreshing={isFetching}
+      onRefresh={() => {
+        void refetch();
+      }}
+    />
+  );
 };

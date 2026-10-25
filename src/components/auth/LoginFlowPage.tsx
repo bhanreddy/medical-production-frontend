@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { matchesUserSubscriptionReturnPath } from '../../payment/phonePePG';
 import { useAuth } from '../../lib/auth';
-import { supabase } from '../../lib/supabase';
+import { SessionRecovery } from './SessionRecovery';
 import type { AuthGate } from '../../services/authGateService';
 import { LoginScreen } from './LoginScreen';
 import { SignupScreen } from './SignupScreen';
@@ -14,16 +15,21 @@ import { RenewalScreen } from './RenewalScreen';
  */
 export function LoginFlowPage() {
   const navigate = useNavigate();
-  const { session, role, isLoading, checkSession } = useAuth();
+  const location = useLocation();
+  const requestedReturn = location.state?.paymentReturn;
+  const paymentReturn = typeof requestedReturn === 'string' && matchesUserSubscriptionReturnPath(requestedReturn.split('?')[0]) ? requestedReturn : null;
+  const { session, role, isLoading, isRecovering, checkSession } = useAuth();
   const [gate, setGate] = useState<AuthGate>('login');
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || isRecovering) return;
     if (session) {
-      if (role === 'SUPER_ADMIN') navigate('/admin/dashboard', { replace: true });
+      if (paymentReturn) { navigate(paymentReturn, { replace: true }); return; }
+      if (role === 'SUPER_ADMIN')
+        navigate('/admin/dashboard', { replace: true });
       else navigate('/dashboard', { replace: true });
     }
-  }, [session, role, isLoading, navigate]);
+  }, [session, role, isLoading, isRecovering, navigate, paymentReturn]);
 
   const onNavigate = (next: AuthGate) => {
     if (next === 'app') {
@@ -32,26 +38,10 @@ export function LoginFlowPage() {
         await checkSession();
         const state = useAuth.getState();
         if (state.session) {
-          if (state.role === 'SUPER_ADMIN') navigate('/admin/dashboard', { replace: true });
+          if (paymentReturn) { navigate(paymentReturn, { replace: true }); return; }
+          if (state.role === 'SUPER_ADMIN')
+            navigate('/admin/dashboard', { replace: true });
           else navigate('/dashboard', { replace: true });
-          return;
-        }
-        // Backend /auth/me may have failed (e.g. users table not yet created).
-        // Fall back to the Supabase session so login still works.
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          const meta = data.session.user.user_metadata as Record<string, string> | undefined;
-          const fallbackUser = {
-            id: data.session.user.id,
-            email: data.session.user.email,
-            full_name: meta?.full_name ?? meta?.name ?? data.session.user.email?.split('@')[0],
-            role: 'OWNER' as const,
-            clinic_id: null,
-          };
-          useAuth.getState().signIn(data.session, fallbackUser);
-          // Wait one tick for React to process the state update
-          await new Promise(r => setTimeout(r, 0));
-          navigate('/dashboard', { replace: true });
           return;
         }
         setGate('login');
@@ -73,6 +63,7 @@ export function LoginFlowPage() {
     );
   }
 
+  if (isRecovering) return <SessionRecovery />;
   if (session) return null;
 
   const SUBSCRIPTION_GATE_ENABLED = false;
@@ -81,9 +72,17 @@ export function LoginFlowPage() {
     case 'signup':
       return <SignupScreen onNavigate={onNavigate} />;
     case 'payment':
-      return SUBSCRIPTION_GATE_ENABLED ? <PaymentScreen onNavigate={onNavigate} /> : <LoginScreen onNavigate={onNavigate} />;
+      return SUBSCRIPTION_GATE_ENABLED ? (
+        <PaymentScreen onNavigate={onNavigate} />
+      ) : (
+        <LoginScreen onNavigate={onNavigate} />
+      );
     case 'renewal':
-      return SUBSCRIPTION_GATE_ENABLED ? <RenewalScreen onNavigate={onNavigate} /> : <LoginScreen onNavigate={onNavigate} />;
+      return SUBSCRIPTION_GATE_ENABLED ? (
+        <RenewalScreen onNavigate={onNavigate} />
+      ) : (
+        <LoginScreen onNavigate={onNavigate} />
+      );
     default:
       return <LoginScreen onNavigate={onNavigate} />;
   }
