@@ -1,9 +1,10 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import axiosRetry, { exponentialDelay, isNetworkError } from 'axios-retry';
 import { sessionClient } from './sessionClient';
+import { API_BASE_URL } from './apiBaseUrl';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL: API_BASE_URL,
   timeout: 15000,
 });
 

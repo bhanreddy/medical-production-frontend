@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { API_BASE_URL } from '../lib/apiBaseUrl';
 
 /**
  * useRealtimeEvents — Desktop SSE subscription for real-time updates.
@@ -71,8 +72,7 @@ export function useRealtimeEvents() {
         return;
       }
 
-      const baseURL = import.meta.env.VITE_API_URL || '';
-      const url = `${baseURL}/events/stream?token=${encodeURIComponent(token)}`;
+      const url = `${API_BASE_URL}/events/stream?token=${encodeURIComponent(token)}`;
 
       esRef.current?.close();
       const es = new EventSource(url);

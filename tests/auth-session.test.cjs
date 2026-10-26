@@ -235,6 +235,7 @@ let retryPolicy;
 function apiHarness(client) {
   return load("lib/api.ts", {
     axios,
+    "./apiBaseUrl": { API_BASE_URL: "/api" },
     "axios-retry": {
       __esModule: true,
       default: (_api, policy) => {
