@@ -117,10 +117,10 @@ export const ExpiryRecallPage: React.FC = () => {
         <div>
           <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
             <ShieldAlert className="w-6 h-6 text-accent-primary" />
-            Expiry Intelligence & Product Recall Command
+            Expiry & recalls
           </h1>
           <p className="text-xs text-muted mt-1">
-            Proactive expiry risk exposure valuation, statutory product recall execution, and historical sales/prescription trace.
+            Review expiry risks, manage recalls, and trace affected stock.
           </p>
         </div>
 

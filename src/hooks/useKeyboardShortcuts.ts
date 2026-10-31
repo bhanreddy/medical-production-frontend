@@ -25,7 +25,7 @@ export const useKeyboardShortcuts = (shortcuts: ShortcutMap) => {
         const local = targetInsideLocalFkeyZone(event.target);
         const isF = F_KEYS.includes(event.key as (typeof F_KEYS)[number]);
 
-        if (event.ctrlKey && event.key.toLowerCase() === 'k') {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && shortcuts['Ctrl+K']) {
             event.preventDefault();
             shortcuts['Ctrl+K']?.();
             return;

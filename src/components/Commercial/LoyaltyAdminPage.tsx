@@ -59,10 +59,10 @@ export const LoyaltyAdminPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground-strong tracking-tight flex items-center gap-2">
             <Award className="w-7 h-7 text-violet" />
-            Loyalty & Customer Tier Management
+            Loyalty & customer groups
           </h1>
           <p className="text-muted text-sm mt-1">
-            Configure earn/burn rules, tier multipliers, customer group discounts, and immutable points ledger.
+            Manage loyalty points, customer groups, and redemption rules.
           </p>
         </div>
         <Button onClick={() => setShowAdjustModal(true)} className="flex items-center gap-2 bg-violet hover:bg-violet text-on-primary">

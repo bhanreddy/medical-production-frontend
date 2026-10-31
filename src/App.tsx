@@ -9,9 +9,9 @@ import { HomeRedirect } from './components/auth/HomeRedirect';
 import { PaymentReturnPage } from './components/auth/PaymentReturnPage';
 import { getUserSubscriptionReturnPath } from './payment/phonePePG/returnPath';
 import { RouteError } from './components/RouteError';
-import { ClinicProfileSettings } from './components/Settings/ClinicProfileSettings';
-import { ExpiryAlertsScreen } from './components/Inventory/ExpiryAlertsScreen';
-import { StaffSettings } from './components/Settings/StaffSettings';
+const ClinicProfileSettings = lazy(() => import('./components/Settings/ClinicProfileSettings').then(module => ({ default: module.ClinicProfileSettings })));
+const ExpiryAlertsScreen = lazy(() => import('./components/Inventory/ExpiryAlertsScreen').then(module => ({ default: module.ExpiryAlertsScreen })));
+const StaffSettings = lazy(() => import('./components/Settings/StaffSettings').then(module => ({ default: module.StaffSettings })));
 
 const Error403 = () => <AuthFrame title="Access restricted" subtitle="Your account does not have permission to open this page."><Link to="/" className="flex items-center gap-2 text-primary text-sm font-semibold"><ArrowLeft size={16} aria-hidden /> Return to your workspace</Link></AuthFrame>;
 
@@ -33,28 +33,29 @@ const RootLayout = () => {
 };
 
 import { AdminLayout } from './components/admin/AdminLayout';
-import { AdminDashboard } from './components/admin/AdminDashboard';
-import { AdminClinics } from './components/admin/AdminClinics';
-import { AdminUsers } from './components/admin/AdminUsers';
-import { AdminSystemHealth } from './components/admin/AdminSystemHealth';
-import { AdminClinicProfile } from './components/admin/AdminClinicProfile';
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
+const AdminClinics = lazy(() => import('./components/admin/AdminClinics').then(module => ({ default: module.AdminClinics })));
+const AdminUsers = lazy(() => import('./components/admin/AdminUsers').then(module => ({ default: module.AdminUsers })));
+const AdminSystemHealth = lazy(() => import('./components/admin/AdminSystemHealth').then(module => ({ default: module.AdminSystemHealth })));
+const AdminClinicProfile = lazy(() => import('./components/admin/AdminClinicProfile').then(module => ({ default: module.AdminClinicProfile })));
 
 import { ClinicLayout } from './components/clinic/ClinicLayout';
-import { ClinicDashboard } from './components/clinic/ClinicDashboard';
+const ClinicDashboard = lazy(() => import('./components/clinic/ClinicDashboard').then(module => ({ default: module.ClinicDashboard })));
 const WebPos = lazy(() => import('./components/clinic/WebPos').then(module => ({ default: module.WebPos })));
 const RegisterWizard = lazy(() => import('./components/auth/RegisterWizard').then(module => ({ default: module.RegisterWizard })));
-import BillingSettings from './routes/(clinic)/settings/billing';
+const BillingSettings = lazy(() => import('./routes/(clinic)/settings/billing'));
 const BusinessAnalyticsScreen = lazy(() => import('./components/Analytics/BusinessAnalyticsScreen').then(module => ({ default: module.BusinessAnalyticsScreen })));
 const ImportDataScreen = lazy(() => import('./components/Settings/ImportDataScreen').then(module => ({ default: module.ImportDataScreen })));
-import { BillingSalesListPage } from './components/clinic/BillingSalesListPage';
-import { PurchasesListPage } from './components/clinic/PurchasesListPage';
-import { CustomersListPage } from './components/clinic/CustomersListPage';
-import { SuppliersListPage } from './components/clinic/SuppliersListPage';
-import { ExpensesListPage } from './components/clinic/ExpensesListPage';
-import { ReportsHubPage } from './components/clinic/ReportsHubPage';
-import { PurchaseWorkflowPage, InventoryPageShell } from './components/clinic/EmbeddedClinicScreens';
-import { ShortbookPage } from './components/clinic/ShortbookPage';
-import { SettingsScreen } from './components/Settings/SettingsScreen';
+const BillingSalesListPage = lazy(() => import('./components/clinic/BillingSalesListPage').then(module => ({ default: module.BillingSalesListPage })));
+const PurchasesListPage = lazy(() => import('./components/clinic/PurchasesListPage').then(module => ({ default: module.PurchasesListPage })));
+const CustomersListPage = lazy(() => import('./components/clinic/CustomersListPage').then(module => ({ default: module.CustomersListPage })));
+const SuppliersListPage = lazy(() => import('./components/clinic/SuppliersListPage').then(module => ({ default: module.SuppliersListPage })));
+const ExpensesListPage = lazy(() => import('./components/clinic/ExpensesListPage').then(module => ({ default: module.ExpensesListPage })));
+const ReportsHubPage = lazy(() => import('./components/clinic/ReportsHubPage').then(module => ({ default: module.ReportsHubPage })));
+const PurchaseWorkflowPage = lazy(() => import('./components/clinic/EmbeddedClinicScreens').then(module => ({ default: module.PurchaseWorkflowPage })));
+const InventoryPageShell = lazy(() => import('./components/clinic/EmbeddedClinicScreens').then(module => ({ default: module.InventoryPageShell })));
+const ShortbookPage = lazy(() => import('./components/clinic/ShortbookPage').then(module => ({ default: module.ShortbookPage })));
+const SettingsScreen = lazy(() => import('./components/Settings/SettingsScreen').then(module => ({ default: module.SettingsScreen })));
 const PriceBooksPage = lazy(() => import('./components/Commercial/PriceBooksPage').then(module => ({ default: module.PriceBooksPage })));
 const PromotionsPage = lazy(() => import('./components/Commercial/PromotionsPage').then(module => ({ default: module.PromotionsPage })));
 const CouponsPage = lazy(() => import('./components/Commercial/CouponsPage').then(module => ({ default: module.CouponsPage })));

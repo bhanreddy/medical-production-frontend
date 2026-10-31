@@ -43,10 +43,10 @@ export const ReorderShortbookPage: React.FC = () => {
         <div>
           <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
             <ShoppingBag className="w-6 h-6 text-accent-primary" />
-            Demand-Driven Reorder & Shortbook V2
+            Reorder & shortbook
           </h1>
           <p className="text-xs text-muted mt-1">
-            Automated lead-time replenishment calculations, supplier MOQ/pack size rounding, and multi-source shortage consolidation.
+            Plan replenishment using demand, supplier lead times, and available stock.
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export const ReorderShortbookPage: React.FC = () => {
                   : 'text-muted hover:text-foreground'
               }`}
             >
-              Shortbook V2 ({shortbookItems.length})
+              Shortbook ({shortbookItems.length})
             </button>
           </div>
 

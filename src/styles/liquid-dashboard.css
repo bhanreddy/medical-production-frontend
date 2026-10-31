@@ -152,7 +152,7 @@
 .premium-content :is(h1, h2, h3) { color: rgb(var(--foreground-strong)); }
 .premium-content .dashboard-revenue :is(h1, h2, h3) { color: #ffffff; }
 .premium-content h2.text-billing-total { font-size: 24px; }
-.premium-content > :first-child > :first-child:has(h1) {
+.premium-content > :first-child > :first-child:has(> h1, > div > h1) {
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -491,7 +491,7 @@
   .revenue-footer { gap: 24px; }
   .liquid-primary-button { margin-left: auto; }
   .dashboard-actions-title > span { display: none; }
-  .premium-content > :first-child > :first-child:has(h1) > .flex { flex-wrap: wrap; }
+  .premium-content > :first-child > :first-child:has(> h1, > div > h1) > .flex { flex-wrap: wrap; }
   .premium-content .grid-cols-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .price-hierarchy > div:last-child > div { border: 0; padding: 8px 0; }
 }
@@ -534,7 +534,7 @@
   .is-mobile-menu-open > aside > div:first-child { padding-right: 48px; }
   .liquid-menu-scrim { display: block; position: fixed; inset: 0; z-index: 50; background: #00000066; }
   .premium-content h1, .premium-content h2.text-billing-total { font-size: 21px; }
-  .premium-content > :first-child > :first-child:has(h1) { align-items: flex-start; }
+  .premium-content > :first-child > :first-child:has(> h1, > div > h1) { align-items: flex-start; }
   .premium-content .grid-cols-3:not(.dashboard-financials) { grid-template-columns: 1fr; }
   .premium-content :is(.col-span-3, .col-span-2) { grid-column: auto; }
   .auth-workspace { padding: 24px 20px; }

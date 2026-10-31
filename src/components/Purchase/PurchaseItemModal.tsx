@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useId } from "react";
 import { Button } from "../ui/Button";
+import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
 import { useProductSearch } from "../../hooks/useProductSearch";
 import { BillingSearchDropdown } from "../Billing/BillingSearchDropdown";
@@ -18,11 +19,12 @@ interface PurchaseItemModalProps {
   }) => void;
 }
 
-export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
+const PurchaseItemForm: React.FC<PurchaseItemModalProps> = ({
   isOpen,
   onClose,
   onAdd,
 }) => {
+  const formId = useId();
   const [productSearch, setProductSearch] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
@@ -39,22 +41,6 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
 
   const [error, setError] = useState("");
   const firstInputRef = useRef<HTMLInputElement>(null);
-
-  // Reset on Open
-  useEffect(() => {
-    if (isOpen) {
-      setProductSearch("");
-      setSelectedProduct(null);
-      setBatchNumber("");
-      setExpiryDate("");
-      setQty("");
-      setCost("");
-      setMrp("");
-      setError("");
-      // Focus hack
-      setTimeout(() => firstInputRef.current?.focus(), 100);
-    }
-  }, [isOpen]);
 
   // Keyboard Nav for Search
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
@@ -83,7 +69,7 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
       setError("Select a valid product.");
       return;
     }
-    if (!batchNumber) {
+    if (!batchNumber.trim()) {
       setError("Batch number is required.");
       return;
     }
@@ -103,22 +89,22 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
     const costNum = Number(cost);
     const mrpNum = Number(mrp);
 
-    if (!quantityNum || quantityNum <= 0) {
+    if (!Number.isFinite(quantityNum) || quantityNum <= 0) {
       setError("Quantity must be > 0.");
       return;
     }
-    if (!costNum || costNum <= 0) {
+    if (!Number.isFinite(costNum) || costNum <= 0) {
       setError("Cost must be > 0.");
       return;
     }
-    if (!mrpNum || mrpNum < costNum) {
+    if (!Number.isFinite(mrpNum) || mrpNum < costNum) {
       setError("MRP must be >= Cost Price.");
       return; // Strict rule: MRP >= Cost
     }
 
     onAdd({
       product: selectedProduct,
-      batchNumber,
+      batchNumber: batchNumber.trim(),
       expiryDate,
       quantity: quantityNum,
       costPrice: costNum,
@@ -130,21 +116,11 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-surface w-full max-w-2xl border-2 border-border rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="p-6 border-b border-border flex justify-between items-center">
-          <h3 className="text-xl font-black uppercase tracking-tight text-foreground-strong">
-            Add Invoice Item
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-muted hover:text-foreground text-2xl leading-none"
-          >
-            &times;
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6 overflow-y-auto">
+    <Modal isOpen={isOpen} onClose={onClose} title="Add purchase item" footer={<>
+      <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+      <Button type="submit" form={formId}>Add item</Button>
+    </>}>
+      <form id={formId} onSubmit={event => { event.preventDefault(); handleConfirm(); }} className="space-y-5">
           {/* PRODUCT SELECTOR */}
           <div className="relative">
             <Input
@@ -176,6 +152,7 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
               <div className="absolute right-2 top-9">
                 <Button
                   size="sm"
+                  type="button"
                   variant="ghost"
                   onClick={() => {
                     setSelectedProduct(null);
@@ -183,7 +160,7 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
                     setTimeout(() => firstInputRef.current?.focus(), 50);
                   }}
                 >
-                  CHANGE
+                  Change
                 </Button>
               </div>
             )}
@@ -192,12 +169,14 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Batch Number"
+              required maxLength={100}
               placeholder="e.g. BATCH-001"
               value={batchNumber}
               onChange={(e) => setBatchNumber(e.target.value)}
             />
             <Input
               label="Expiry Date"
+              required
               type="date"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
@@ -207,6 +186,7 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
           <div className="grid grid-cols-3 gap-4">
             <Input
               label="Quantity"
+              required min="0.001" step="any"
               type="number"
               placeholder="0"
               value={qty}
@@ -214,6 +194,7 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
             />
             <Input
               label="Cost Price (₹)"
+              required min="0.01" step="0.01"
               type="number"
               placeholder="0.00"
               value={cost}
@@ -221,6 +202,7 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
             />
             <Input
               label="MRP (₹)"
+              required min="0.01" step="0.01"
               type="number"
               placeholder="0.00"
               value={mrp}
@@ -229,21 +211,14 @@ export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = ({
           </div>
 
           {error && (
-            <div className="bg-danger/10 border border-danger text-danger p-3 rounded text-sm font-bold text-center uppercase">
+            <div role="alert" className="bg-danger/10 border border-danger text-danger p-3 rounded text-sm font-bold text-center uppercase">
               {error}
             </div>
           )}
-        </div>
-
-        <div className="p-6 border-t border-border flex justify-end gap-4 bg-surface-elevated rounded-b-xl">
-          <Button variant="ghost" onClick={onClose}>
-            CANCEL (ESC)
-          </Button>
-          <Button variant="primary" onClick={handleConfirm}>
-            CONFIRM ADD (ENTER)
-          </Button>
-        </div>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 };
+
+export const PurchaseItemModal: React.FC<PurchaseItemModalProps> = props =>
+  props.isOpen ? <PurchaseItemForm {...props} /> : null;

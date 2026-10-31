@@ -63,7 +63,7 @@ export const CouponsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground-strong tracking-tight flex items-center gap-2">
             <Ticket className="w-7 h-7 text-warning" />
-            Coupon Vouchers & Discounts
+            Coupons
           </h1>
           <p className="text-muted text-sm mt-1">
             Manage campaign voucher codes with cart thresholds, per-customer limits, and checkout redemptions.

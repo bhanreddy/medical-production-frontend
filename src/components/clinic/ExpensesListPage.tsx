@@ -1,8 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useId, useState } from 'react';
 import { format } from 'date-fns';
 import { Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { useDirectory } from '../../hooks/useDirectory';
+import { LoadError, NoSearchResults, Pagination } from '../ui/ListFeedback';
 import type { Expense } from '../../core/types';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -49,8 +52,7 @@ function normalizeExpense(raw: Record<string, unknown>): ExpenseRow {
 }
 
 export const ExpensesListPage: React.FC = () => {
-    const [rows, setRows] = useState<ExpenseRow[]>([]);
-    const [loading, setLoading] = useState(true);
+    const formId = useId();
     const [q, setQ] = useState('');
     const [cat, setCat] = useState<string>('ALL');
     const [modalOpen, setModalOpen] = useState(false);
@@ -62,44 +64,14 @@ export const ExpensesListPage: React.FC = () => {
     const [expenseDate, setExpenseDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
     const [paymentMode, setPaymentMode] = useState<string>('cash');
 
-    const loadExpenses = useCallback(async () => {
-        const res = await api.get('/expenses?limit=200');
-        const list = (res.data?.data || res.data || []).map((r: Record<string, unknown>) => normalizeExpense(r));
-        setRows(list);
-    }, []);
-
-    useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            try {
-                await loadExpenses();
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, [loadExpenses]);
-
-    const categories = useMemo(() => {
-        const s = new Set(rows.map((r) => r.category));
-        return ['ALL', ...Array.from(s).sort()];
-    }, [rows]);
-
-    const filtered = useMemo(() => {
-        let list = rows;
-        if (cat !== 'ALL') list = list.filter((r) => r.category === cat);
-        const s = q.trim().toLowerCase();
-        if (s) {
-            list = list.filter(
-                (r) => r.description.toLowerCase().includes(s) || r.category.toLowerCase().includes(s)
-            );
-        }
-        return list;
-    }, [rows, q, cat]);
-
-    const monthTotal = useMemo(() => rows.reduce((a, r) => a + r.amount, 0), [rows]);
+    const { rows: rawRows, loading, error, refresh, page, limit, total, setPage, fetching } = useDirectory<Record<string, unknown>>('/expenses', q, cat === 'ALL' ? {} : { category: cat });
+    const filtered = useMemo(() => rawRows.map(normalizeExpense), [rawRows]);
+    const { data: summary, refetch: refetchSummary } = useQuery({
+        queryKey: ['expense-summary'],
+        queryFn: async () => (await api.get('/expenses/summary')).data.data as { grand_total: number; summary: { category: string }[] },
+    });
+    const categories = ['ALL', ...new Set([...EXPENSE_CATEGORIES.map(item => item.value), ...(summary?.summary.map(item => item.category) || [])])];
+    const monthTotal = summary?.grand_total;
 
     const resetForm = () => {
         setCategory('misc');
@@ -121,8 +93,8 @@ export const ExpensesListPage: React.FC = () => {
     };
 
     const handleSave = async () => {
-        const parsedAmount = parseFloat(amount);
-        if (!parsedAmount || parsedAmount <= 0) {
+        const parsedAmount = Number(amount);
+        if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
             toast.error('Enter a valid amount');
             return;
         }
@@ -141,7 +113,7 @@ export const ExpensesListPage: React.FC = () => {
                 expense_date: expenseDate.trim(),
                 payment_mode: paymentMode,
             });
-            await loadExpenses();
+            await Promise.all([refresh(), refetchSummary()]);
             toast.success('Expense recorded');
             setModalOpen(false);
             resetForm();
@@ -178,7 +150,7 @@ export const ExpensesListPage: React.FC = () => {
 
             <Card className="p-4">
                 <p className="text-label font-bold text-muted uppercase text-xs tracking-wider">Total logged (all periods)</p>
-                <p className="text-2xl font-black tabular-nums mt-1">{formatInr(monthTotal)}</p>
+                <p className="text-2xl font-black tabular-nums mt-1">{monthTotal === undefined ? '—' : formatInr(monthTotal)}</p>
             </Card>
 
             <div className="flex flex-wrap gap-2">
@@ -186,7 +158,8 @@ export const ExpensesListPage: React.FC = () => {
                     <button
                         key={c}
                         type="button"
-                        onClick={() => setCat(c)}
+                        onClick={() => { setCat(c); setPage(1); }}
+                        aria-pressed={cat === c}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide border-2 transition-colors ${
                             cat === c ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted hover:border-border'
                         }`}
@@ -197,8 +170,9 @@ export const ExpensesListPage: React.FC = () => {
             </div>
 
             <Card className="p-4 space-y-4">
-                <Input placeholder="Search description…" value={q} onChange={(e) => setQ(e.target.value)} icon="🔍" />
-                <Table>
+                <Input placeholder="Search description…" value={q} aria-label="Search expenses" onChange={(e) => { setQ(e.target.value); setPage(1); }} icon="🔍" />
+                {error && <LoadError onRetry={() => void refresh()} />}
+                <Table aria-busy={loading || fetching}>
                     <TableHeader>
                         <TableRow>
                             <TableCell className="text-muted font-bold uppercase text-xs tracking-wider">Date</TableCell>
@@ -209,7 +183,7 @@ export const ExpensesListPage: React.FC = () => {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {loading ? (
+                        {error ? null : loading ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center text-muted py-12">
                                     Loading expenses…
@@ -218,8 +192,9 @@ export const ExpensesListPage: React.FC = () => {
                         ) : filtered.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center py-16 text-muted">
+                                    {q.trim() || cat !== 'ALL' ? <NoSearchResults onClear={() => { setQ(''); setCat('ALL'); setPage(1); }} /> : <>
                                     <p className="font-medium mb-2">No expenses recorded.</p>
-                                    <p className="text-sm">Tap Record expense to log clinic costs.</p>
+                                    <p className="text-sm">Tap Record expense to log clinic costs.</p></>}
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -241,6 +216,7 @@ export const ExpensesListPage: React.FC = () => {
                         )}
                     </TableBody>
                 </Table>
+                {!error && <Pagination page={page} limit={limit} total={total} onPage={setPage} busy={loading || fetching} />}
             </Card>
 
             <Modal
@@ -252,13 +228,13 @@ export const ExpensesListPage: React.FC = () => {
                         <Button variant="ghost" type="button" onClick={closeModal} disabled={saving}>
                             Cancel
                         </Button>
-                        <Button variant="primary" type="button" onClick={() => void handleSave()} disabled={saving}>
+                        <Button variant="primary" type="submit" form={formId} disabled={saving}>
                             {saving ? 'Saving…' : 'Save expense'}
                         </Button>
                     </>
                 }
             >
-                <div className="space-y-4">
+                <form id={formId} onSubmit={event => { event.preventDefault(); void handleSave(); }} className="space-y-4">
                     <Select
                         label="Category *"
                         value={category}
@@ -282,6 +258,7 @@ export const ExpensesListPage: React.FC = () => {
                     />
                     <Input
                         label="Date *"
+                        type="date"
                         value={expenseDate}
                         onChange={(e) => setExpenseDate(e.target.value)}
                         placeholder="YYYY-MM-DD"
@@ -292,7 +269,7 @@ export const ExpensesListPage: React.FC = () => {
                         onChange={(e) => setPaymentMode(e.target.value)}
                         options={[...PAYMENT_MODES]}
                     />
-                </div>
+                </form>
             </Modal>
         </div>
     );

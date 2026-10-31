@@ -90,6 +90,8 @@ export interface Customer extends BaseEntity {
     credit_limit?: number;
     /** Running due balance (increased on DUE sales, reduced on receipts) */
     credit_balance?: number;
+    /** Current API ledger balance in INR. */
+    outstanding_balance?: number;
 }
 
 // 7. suppliers

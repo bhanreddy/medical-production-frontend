@@ -145,10 +145,10 @@ export const StocktakePage: React.FC = () => {
         <div>
           <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
             <ClipboardCheck className="w-6 h-6 text-accent-primary" />
-            Physical Stocktake & Cycle Counting Engine
+            Stocktake
           </h1>
           <p className="text-xs text-muted mt-1">
-            Barcode-driven counting, live-movement reconciliation, blind counts, double-counts, and ledger-backed adjustments.
+            Count physical stock, review differences, and approve adjustments.
           </p>
         </div>
         <div className="flex items-center gap-2">

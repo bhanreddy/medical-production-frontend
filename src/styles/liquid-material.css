@@ -145,3 +145,23 @@ body, .clinic-liquid-shell, .admin-workspace, .auth-workspace {
   }
   .liquid-surface::after, .dashboard-revenue::before { display: none; }
 }
+
+/* Short, composited transitions keep interaction feedback immediate. */
+@keyframes skeleton-breathe { 50% { opacity: .48; } }
+@keyframes modal-enter { from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(.985); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes overlay-enter { from { opacity: 0; } to { opacity: 1; } }
+.skeleton { border-radius: 10px; background: rgb(var(--muted) / .12); animation: skeleton-breathe 1.5s ease-in-out infinite; }
+.modal-overlay { animation: overlay-enter 140ms ease-out; }
+.modal-content { top: 50%; left: 50%; transform: translate(-50%, -50%); max-height: min(90dvh, 900px); animation: modal-enter 180ms cubic-bezier(.2,.8,.2,1); }
+.skip-link { position: fixed; z-index: 100; left: 16px; top: 12px; transform: translateY(-160%); padding: 10px 16px; border-radius: 10px; color: rgb(var(--on-primary)); background: rgb(var(--primary)); box-shadow: 0 4px 20px rgb(0 0 0 / .15); }
+.skip-link:focus { transform: translateY(0); }
+.connection-banner { display: flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 12px; color: rgb(var(--warning)); background: rgb(var(--warning) / .1); border-bottom: 1px solid rgb(var(--warning) / .2); }
+.premium-content { scrollbar-gutter: stable; overscroll-behavior-y: contain; }
+.premium-content:focus { outline: none; }
+.glass-button { transition: background-color 140ms, border-color 140ms, box-shadow 140ms, transform 140ms; }
+.glass-button:active:not(:disabled) { transform: translateY(1px); }
+@media (hover: hover) and (pointer: fine) { .glass-button:hover:not(:disabled) { box-shadow: inset 0 1px 0 var(--glass-highlight), 0 5px 14px -7px rgb(var(--primary) / .3); } }
+@media (pointer: coarse) {
+  .premium-content :is(button, select), .clinic-liquid-shell > div > header button { min-height: 44px; }
+  .premium-content input, .premium-content select, .premium-content textarea { font-size: 16px; }
+}

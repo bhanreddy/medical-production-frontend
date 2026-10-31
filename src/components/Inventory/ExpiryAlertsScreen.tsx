@@ -14,9 +14,9 @@ export const ExpiryAlertsScreen: React.FC = () => {
         <div className="h-full flex flex-col gap-8 select-none">
             <div className="flex justify-between items-end gap-6 flex-wrap">
                 <div className="space-y-1">
-                    <h2 className="text-billing-total font-black text-foreground-strong tracking-tighter uppercase italic leading-none">
+                    <h1 className="text-billing-total font-black text-foreground-strong tracking-tighter uppercase italic leading-none">
                         {EXPIRY_ALERTS_SCREEN_COPY.title}
-                    </h2>
+                    </h1>
                     <p className="text-muted text-sm font-black uppercase tracking-widest">{EXPIRY_ALERTS_SCREEN_COPY.subtitle}</p>
                 </div>
 

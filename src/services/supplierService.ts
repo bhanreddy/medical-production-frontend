@@ -1,15 +1,20 @@
 import api from "../lib/api";
 import type { Supplier } from "../core/types";
 
-export const SupplierService = {
-  async getAll(): Promise<Supplier[]> {
-    const res = await api.get("/suppliers?limit=200");
-    return res.data?.data || [];
-  },
+async function fetchSuppliers(): Promise<Supplier[]> {
+  const suppliers: Supplier[] = [];
+  for (let page = 1; page <= 100; page++) {
+    const { data } = await api.get('/suppliers', { params: { page, limit: 100 } });
+    suppliers.push(...(data.data || []));
+    if (!data.pagination || page >= data.pagination.totalPages) return suppliers;
+  }
+  throw new Error('This supplier directory is too large to load. Please contact support.');
+}
 
+export const SupplierService = {
+  getAll: fetchSuppliers,
   async getActive(): Promise<Supplier[]> {
-    const res = await api.get("/suppliers?limit=200");
-    return (res.data?.data || []).filter((s: any) => s.is_active);
+    return (await fetchSuppliers()).filter(supplier => supplier.is_active !== false);
   },
 
   async addSupplier(

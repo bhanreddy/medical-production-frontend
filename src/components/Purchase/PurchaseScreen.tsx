@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Table } from "../ui/Table";
 import { Badge } from "../ui/Badge";
+import { LoadError } from "../ui/ListFeedback";
 import { Select } from "../ui/Select";
 import { usePurchaseFlow } from "../../hooks/usePurchaseFlow";
 import { PurchaseItemModal } from "./PurchaseItemModal";
@@ -33,16 +35,12 @@ export const PurchaseScreen: React.FC = () => {
   } = usePurchaseFlow();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [vendors, setVendors] = useState<{ value: string; label: string }[]>(
-    [],
-  );
-
-  // Fetch Vendors
-  useEffect(() => {
-    SupplierService.getActive().then((suppliers) => {
-      setVendors(suppliers.map((s) => ({ value: s.id, label: s.name })));
-    });
-  }, []);
+  const { data: suppliers = [], isError: supplierError, refetch: reloadSuppliers } = useQuery({
+    queryKey: ['purchase-suppliers'],
+    queryFn: () => SupplierService.getActive(),
+    staleTime: 60_000,
+  });
+  const vendors = suppliers.map(supplier => ({ value: supplier.id, label: supplier.name }));
 
   // Keyboard Shortcuts
   useKeyboardShortcuts({
@@ -59,9 +57,9 @@ export const PurchaseScreen: React.FC = () => {
       {/* HEADER: TRANSACTION IDENTITY */}
       <div className="flex flex-wrap gap-4 justify-between items-end">
         <div className="space-y-1">
-          <h2 className="text-billing-total font-black text-foreground-strong tracking-tighter uppercase italic leading-none">
+          <h1 className="text-billing-total font-black text-foreground-strong tracking-tighter uppercase italic leading-none">
             {PURCHASE_SCREEN_COPY.title}
-          </h2>
+          </h1>
           <p className="text-muted text-sm font-black uppercase tracking-widest">
             {PURCHASE_SCREEN_COPY.subtitle}
           </p>
@@ -75,6 +73,7 @@ export const PurchaseScreen: React.FC = () => {
         </div>
       </div>
 
+      {supplierError && <LoadError onRetry={() => { void reloadSuppliers(); }} />}
       {/* IDENTITY ZONE: HEADER METADATA */}
       <div
         className={`p-8 rounded-xl border-2 transition-all duration-500
@@ -84,14 +83,14 @@ export const PurchaseScreen: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <Select
             id="vendor-select"
-            label="Supplier / Master Vendor (F4)"
-            options={[{ value: "", label: "Select Vendor..." }, ...vendors]}
+            label="Supplier (F4)"
+            options={[{ value: "", label: "Select a supplier…" }, ...vendors]}
             value={vendorId}
             onChange={(e) => setVendorId(e.target.value)}
             disabled={!isDraft}
           />
           <Input
-            label="Invoice Reference #"
+            label="Supplier invoice number"
             placeholder="#INV-0000"
             icon="📄"
             value={invoiceNumber}
@@ -99,7 +98,7 @@ export const PurchaseScreen: React.FC = () => {
             disabled={!isDraft}
           />
           <Input
-            label="Inward Date"
+            label="Received date"
             type="date"
             icon="📅"
             value={inwardDate}
@@ -120,7 +119,7 @@ export const PurchaseScreen: React.FC = () => {
       </div>
       {/* CONTENT ZONE: LINE ITEMS */}
       <div
-        className={`flex-1 min-h-0 border-2 rounded-xl overflow-hidden flex flex-col transition-all duration-500
+        className={`flex-none min-h-40 border-2 rounded-xl overflow-hidden flex flex-col transition-all duration-500
                 ${!isDraft ? "bg-surface border-border" : "bg-surface border-border shadow-inner"}
             `}
       >
@@ -161,7 +160,7 @@ export const PurchaseScreen: React.FC = () => {
                   <button
                     onClick={() => removeItem(item.id)}
                     className="text-danger hover:bg-danger/10 p-1 rounded transition-colors"
-                    title="Remove Item"
+                    title="Remove Item" aria-label={`Remove ${item.product.name}`}
                   >
                     🗑️
                   </button>
@@ -175,10 +174,10 @@ export const PurchaseScreen: React.FC = () => {
             <span className="text-8xl">📥</span>
             <div className="text-center">
               <p className="text-heading font-black uppercase tracking-tighter text-foreground-strong">
-                Entry Matrix Ready
+                Add your first item
               </p>
               <p className="text-label font-bold text-muted uppercase tracking-widest mt-1">
-                Press F6 to mount item to invoice buffer
+                Choose Add item or press F6 to enter a medicine and batch.
               </p>
             </div>
           </div>
@@ -211,7 +210,7 @@ export const PurchaseScreen: React.FC = () => {
             onClick={resetDraft}
             disabled={isCommitting}
           >
-            RESET ENTRY
+            Clear draft
           </Button>
           <Button
             variant={!isDraft ? "secondary" : "primary"}
@@ -222,7 +221,7 @@ export const PurchaseScreen: React.FC = () => {
             disabled={!isDraft || isCommitting}
             isLoading={isCommitting}
           >
-            {!isDraft ? "TRANSACTION FINALIZED" : "COMMIT TO LEDGER (F12)"}
+            {!isDraft ? "Purchase saved" : "Save purchase (F12)"}
           </Button>
         </div>
       </div>

@@ -82,10 +82,10 @@ export const InventoryCommandCenter: React.FC = () => {
         <div>
           <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
             <PackageSearch className="w-6 h-6 text-accent-primary" />
-            Inventory Command Centre
+            Inventory overview
           </h1>
           <p className="text-xs text-muted mt-1">
-            Enterprise multi-state stock tracking, sales velocity, valuation, and real-time inventory health.
+            Monitor availability, sales trends, stock value, and alerts.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -94,7 +94,7 @@ export const InventoryCommandCenter: React.FC = () => {
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-border hover:bg-bg-card transition-colors text-foreground"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh Intelligence
+            Refresh overview
           </button>
         </div>
       </div>

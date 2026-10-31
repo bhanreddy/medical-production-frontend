@@ -40,6 +40,7 @@ export function useClinicNavHotkeys(): void {
 
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
+            if (e.defaultPrevented || (e.target as HTMLElement | null)?.closest('[role="dialog"]')) return;
             if (!/^F(1[0-2]|[1-9])$/.test(e.key)) return;
             if (e.repeat) return;
             if (isFormFieldTarget(e.target)) return;

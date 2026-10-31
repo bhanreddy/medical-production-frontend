@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useId, useState } from "react";
 import { Plus } from "lucide-react";
 import toast from "react-hot-toast";
-import api from "../../lib/api";
+import { useDirectory } from "../../hooks/useDirectory";
+import { LoadError, NoSearchResults, Pagination } from "../ui/ListFeedback";
 import type { Customer } from "../../core/types";
 import { CustomerService } from "../../services/customerService";
 import { Button } from "../ui/Button";
@@ -18,8 +19,7 @@ import {
 import { formatInr } from "../../lib/formatInr";
 
 export const CustomersListPage: React.FC = () => {
-  const [rows, setRows] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
+    const formId = useId();
   const [q, setQ] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -29,33 +29,7 @@ export const CustomersListPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [creditLimit, setCreditLimit] = useState("");
 
-  const loadCustomers = useCallback(async () => {
-    const res = await api.get("/customers?limit=200");
-    const list = res.data?.data || res.data || [];
-    setRows(list);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        await loadCustomers();
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [loadCustomers]);
-
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return rows;
-    return rows.filter(
-      (c) => c.name.toLowerCase().includes(s) || c.phone.includes(s),
-    );
-  }, [rows, q]);
+  const { rows: filtered, loading, error, refresh, page, limit, total, setPage, fetching } = useDirectory<Customer>("/customers", q);
 
   const resetForm = () => {
     setName("");
@@ -98,7 +72,7 @@ export const CustomersListPage: React.FC = () => {
       return;
     }
 
-    const limitNum = creditLimit.trim() ? parseFloat(creditLimit) : NaN;
+    const limitNum = creditLimit.trim() ? Number(creditLimit) : NaN;
     if (creditLimit.trim() && (!Number.isFinite(limitNum) || limitNum < 0)) {
       toast.error("Credit limit must be a valid amount");
       return;
@@ -112,7 +86,7 @@ export const CustomersListPage: React.FC = () => {
         ...(trimmedEmail ? { email: trimmedEmail } : {}),
         credit_limit: Number.isFinite(limitNum) ? limitNum : 0,
       });
-      await loadCustomers();
+      await refresh();
       toast.success("Customer added");
       setModalOpen(false);
       resetForm();
@@ -154,10 +128,12 @@ export const CustomersListPage: React.FC = () => {
         <Input
           placeholder="Search name or phone…"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => { setQ(e.target.value); setPage(1); }}
+          aria-label="Search customers"
           icon="🔍"
         />
-        <Table>
+        {error && <LoadError onRetry={() => void refresh()} />}
+        <Table aria-busy={loading || fetching}>
           <TableHeader>
             <TableRow>
               <TableCell className="text-muted font-bold uppercase text-xs tracking-wider">
@@ -178,7 +154,7 @@ export const CustomersListPage: React.FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {error ? null : loading ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted py-12">
                   Loading customers…
@@ -187,10 +163,11 @@ export const CustomersListPage: React.FC = () => {
             ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-16 text-muted">
+                  {q.trim() ? <NoSearchResults onClear={() => { setQ(""); setPage(1); }} /> : <>
                   <p className="font-medium mb-2">No customers yet.</p>
                   <p className="text-sm">
                     Add a customer to track credit and purchase history.
-                  </p>
+                  </p></>}
                 </TableCell>
               </TableRow>
             ) : (
@@ -205,13 +182,14 @@ export const CustomersListPage: React.FC = () => {
                     {formatInr(c.credit_limit ?? 0)}
                   </TableCell>
                   <TableCell className="text-right font-black tabular-nums text-warning">
-                    {formatInr(c.credit_balance ?? 0)}
+                    {formatInr(c.outstanding_balance ?? c.credit_balance ?? 0)}
                   </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
+        {!error && <Pagination page={page} limit={limit} total={total} onPage={setPage} busy={loading || fetching} />}
       </Card>
 
       <Modal
@@ -230,8 +208,8 @@ export const CustomersListPage: React.FC = () => {
             </Button>
             <Button
               variant="primary"
-              type="button"
-              onClick={() => void handleSave()}
+              type="submit"
+              form={formId}
               disabled={saving}
             >
               {saving ? "Saving…" : "Save customer"}
@@ -239,13 +217,12 @@ export const CustomersListPage: React.FC = () => {
           </>
         }
       >
-        <div className="space-y-4">
+        <form id={formId} onSubmit={event => { event.preventDefault(); void handleSave(); }} className="space-y-4">
           <Input
             label="Name *"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Rajesh Kumar"
-            autoFocus
           />
           <Input
             label="Phone *"
@@ -272,7 +249,7 @@ export const CustomersListPage: React.FC = () => {
             placeholder="Optional — for due billing"
             inputMode="decimal"
           />
-        </div>
+        </form>
       </Modal>
     </div>
   );

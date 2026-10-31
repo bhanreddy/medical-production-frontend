@@ -157,7 +157,7 @@ export const WarehouseOperationsView: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-border bg-surface/40 rounded-t-lg px-2">
+      <div className="flex flex-wrap border-b border-border bg-surface/40 rounded-t-lg px-2">
         <button
           onClick={() => setActiveTab('queues')}
           className={`px-4 py-2 text-xs font-semibold border-b-2 transition ${

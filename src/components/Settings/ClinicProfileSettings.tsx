@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../lib/api";
+import { clearClinicProfileCache } from '../../services/clinicProfileCache';
 import { useAuth } from "../../lib/auth";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
@@ -56,7 +57,8 @@ export function ClinicProfileSettings({
     setSaving(true);
     setError("");
     try {
-      await api.put("/clinics/me", profile);
+      await api.put("/clinics/me", Object.fromEntries(fields.map(([key]) => [key, profile[key]])));
+      clearClinicProfileCache();
       toast.success("Settings saved");
       window.dispatchEvent(new CustomEvent("medpos:shop-profile-updated"));
     } catch {

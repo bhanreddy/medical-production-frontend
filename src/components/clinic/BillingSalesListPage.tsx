@@ -173,7 +173,7 @@ export const BillingSalesListPage: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-black text-foreground-strong tracking-tight">
-            Billing Sales List
+            Sales & invoices
           </h1>
           <p className="text-sm text-muted mt-1">
             Invoices from your shop — search, print, and open POS for new bills.
@@ -204,7 +204,7 @@ export const BillingSalesListPage: React.FC = () => {
         </Card>
         <Card className="p-4">
           <p className="text-label font-bold text-muted uppercase text-xs tracking-wider">
-            Outstanding / other on this page
+            Outstanding on this page
           </p>
           <p className="text-xl font-black tabular-nums mt-1 text-warning">
             {formatInr(totals.pending, 2)}
@@ -216,6 +216,7 @@ export const BillingSalesListPage: React.FC = () => {
         <div className="flex flex-col md:flex-row gap-3 md:items-center">
           <Input
             placeholder="Search invoice, customer, payment…"
+            aria-label="Search invoices"
             value={q}
             onChange={(e) => {
               setQ(e.target.value);

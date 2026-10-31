@@ -159,25 +159,25 @@ export const DASHBOARD_QUICK_ACTIONS: readonly {
 ] as const;
 
 export const INVENTORY_PAGE_COPY = {
-    title: 'Stock Radar',
-    subtitleScanning: 'Scanning...',
-    subtitleActive: (n: number) => `Inventory Intelligence • Active Batches: ${n}`,
+    title: 'Inventory',
+    subtitleScanning: 'Loading inventory…',
+    subtitleActive: (n: number) => `${n} active batch${n === 1 ? '' : 'es'}`,
     subtitleDisposed: (n: number) => `Disposed batches • ${n} record(s)`,
-    searchPlaceholder: 'Filter by name / batch (F1)...',
-    newBatch: '+ NEW BATCH (F6)',
+    searchPlaceholder: 'Search medicine or batch…',
+    newBatch: 'Add batch (F6)',
     tabActive: 'Active inventory',
     tabDisposed: 'Disposed batches',
-    headers: ['MEDICINE / DESCRIPTION', 'BATCH_ID', 'EXPIRY', 'ON_HAND', 'STATUS', ''] as const,
-    disposedHeaders: ['MEDICINE', 'BATCH_ID', 'EXPIRY', 'DISPOSED_AT', 'DISPOSED_BY', 'REASON'] as const,
+    headers: ['Medicine', 'Batch', 'Expiry', 'In stock', 'Status', ''] as const,
+    disposedHeaders: ['Medicine', 'Batch', 'Expiry', 'Disposal date', 'Disposed by', 'Reason'] as const,
     disposeDisabledTooltip: 'Not expired',
     emptySearch: 'No matches found.',
     emptyDefault: 'Inventory is empty.',
     emptyDisposed: 'No disposed batches recorded.',
     miniStats: {
-        totalAssets: 'Total Assets',
-        criticalStock: 'Critical Stock',
-        nearExpiry: 'Near Expiry',
-        netValuation: 'Net Valuation',
+        totalAssets: 'Active batches',
+        criticalStock: 'Low stock',
+        nearExpiry: 'Expiring soon',
+        netValuation: 'Stock value',
     },
     disposeModal: {
         title: 'Confirm batch disposal',
@@ -264,7 +264,7 @@ export const ACCESS_DENIED_COPY = {
 } as const;
 
 export const EXPIRY_ALERTS_SCREEN_COPY = {
-    title: 'Ready to Expiry',
+    title: 'Expiry alerts',
     subtitle: 'Products requiring immediate attention',
     hint: 'Prioritize clearance or supplier return for critical batches.',
     withinDays: (n: number) => `Within ${n} Days`,
@@ -341,10 +341,10 @@ export const MEDICINE_MASTER_SCREEN_COPY = {
 } as const;
 
 export const PURCHASE_SCREEN_COPY = {
-    title: 'Inward Entry',
-    subtitle: 'Stock Acquisition • Supplier Invoice Logic',
-    committedBadge: 'COMMITTED • LEDGER UPDATED',
-    draftBadge: 'DRAFT • UNCOMMITTED',
+    title: 'New purchase',
+    subtitle: 'Record a supplier invoice and receive stock.',
+    committedBadge: 'Saved · Stock updated',
+    draftBadge: 'Unsaved draft',
 } as const;
 
 export const EXPENSE_SCREEN_COPY = {

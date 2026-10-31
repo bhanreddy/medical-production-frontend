@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format, isValid, parseISO } from 'date-fns';
 import { Plus } from 'lucide-react';
-import api from '../../lib/api';
+import { useDirectory } from '../../hooks/useDirectory';
+import { LoadError, NoSearchResults, Pagination } from '../ui/ListFeedback';
 import type { Purchase } from '../../core/types';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -43,57 +44,17 @@ function formatOptionalDate(value: string | null | undefined): string {
 }
 
 export const PurchasesListPage: React.FC = () => {
-    const [rows, setRows] = useState<Row[]>([]);
-    const [loading, setLoading] = useState(true);
     const [q, setQ] = useState('');
 
-    useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            try {
-                const [purchasesRes, suppliersRes] = await Promise.all([
-                    api.get('/purchases', { params: { limit: 500 } }),
-                    api.get('/suppliers', { params: { limit: 500 } }),
-                ]);
-                const purchases = purchasesRes.data?.data || purchasesRes.data || [];
-                const suppliers = suppliersRes.data?.data || suppliersRes.data || [];
-                const smap = new Map<string, string>();
-                for (const s of suppliers as Array<{ id?: string; _local_id?: string; name?: string }>) {
-                    if (s.id && s.name) smap.set(s.id, s.name);
-                    if (s._local_id && s.name) smap.set(s._local_id, s.name);
-                }
-                const enriched: Row[] = purchases
-                    .sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
-                        String(b.invoice_date ?? b.created_at ?? '').localeCompare(String(a.invoice_date ?? a.created_at ?? ''))
-                    )
-                    .map((p: Record<string, unknown>) => ({
-                        ...p,
-                        supplierName: resolveSupplierName(p, smap),
-                        invoice_date: (p.invoice_date as string | null) ?? String(p.created_at ?? '').slice(0, 10) ?? null,
-                        received_date: (p.received_date as string | null) ?? String(p.created_at ?? '').slice(0, 10) ?? null,
-                        total_amount: Number(p.total_amount ?? p.net_amount ?? 0),
-                        status: resolvePurchaseStatus(p),
-                    })) as Row[];
-                if (!cancelled) setRows(enriched);
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-    const filtered = useMemo(() => {
-        const s = q.trim().toLowerCase();
-        if (!s) return rows;
-        return rows.filter(
-            (r) =>
-                r.invoice_number.toLowerCase().includes(s) ||
-                r.supplierName.toLowerCase().includes(s) ||
-                r.status.toLowerCase().includes(s)
-        );
-    }, [rows, q]);
+    const { rows: rawRows, loading, error, refresh, page, limit, total, setPage, fetching } = useDirectory<Record<string, unknown>>('/purchases', q);
+    const rows = useMemo(() => rawRows.map(p => ({ ...p,
+        supplierName: resolveSupplierName(p, new Map()),
+        invoice_date: p.invoice_date ?? String(p.created_at ?? '').slice(0, 10),
+        received_date: p.received_date ?? String(p.created_at ?? '').slice(0, 10),
+        total_amount: Number(p.total_amount ?? p.net_amount ?? 0),
+        status: resolvePurchaseStatus(p),
+    })) as Row[], [rawRows]);
+    const filtered = rows;
 
     const totalValue = useMemo(() => rows.reduce((a, r) => a + r.total_amount, 0), [rows]);
     const pendingPaymentCount = useMemo(
@@ -116,22 +77,23 @@ export const PurchasesListPage: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card className="p-4">
-                    <p className="text-label font-bold text-muted uppercase text-xs tracking-wider">Recorded purchases</p>
-                    <p className="text-xl font-black tabular-nums mt-1">{rows.length}</p>
+                    <p className="text-label font-bold text-muted uppercase text-xs tracking-wider">Purchases in this view</p>
+                    <p className="text-xl font-black tabular-nums mt-1">{total}</p>
                 </Card>
                 <Card className="p-4">
-                    <p className="text-label font-bold text-muted uppercase text-xs tracking-wider">Total inward value</p>
+                    <p className="text-label font-bold text-muted uppercase text-xs tracking-wider">Inward value on this page</p>
                     <p className="text-xl font-black tabular-nums mt-1">{formatInr(totalValue)}</p>
                 </Card>
                 <Card className="p-4">
-                    <p className="text-label font-bold text-muted uppercase text-xs tracking-wider">Unpaid supplier bills</p>
+                    <p className="text-label font-bold text-muted uppercase text-xs tracking-wider">Unpaid bills on this page</p>
                     <p className="text-xl font-black tabular-nums mt-1">{pendingPaymentCount}</p>
                 </Card>
             </div>
 
             <Card className="p-4 space-y-4">
-                <Input placeholder="Search PO / supplier / status…" value={q} onChange={(e) => setQ(e.target.value)} icon="🔍" />
-                <Table>
+                <Input placeholder="Search invoice, supplier or payment status…" value={q} aria-label="Search purchases" onChange={(e) => { setQ(e.target.value); setPage(1); }} icon="🔍" />
+                {error && <LoadError onRetry={() => void refresh()} />}
+                <Table aria-busy={loading || fetching}>
                     <TableHeader>
                         <TableRow>
                             <TableCell className="text-muted font-bold uppercase text-xs tracking-wider">Invoice #</TableCell>
@@ -143,7 +105,7 @@ export const PurchasesListPage: React.FC = () => {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {loading ? (
+                        {error ? null : loading ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="text-center text-muted py-12">
                                     Loading purchases…
@@ -152,10 +114,11 @@ export const PurchasesListPage: React.FC = () => {
                         ) : filtered.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="text-center py-16">
+                                    {q.trim() ? <NoSearchResults onClear={() => { setQ(''); setPage(1); }} /> : <>
                                     <p className="text-muted font-medium mb-4">No purchase records yet.</p>
                                     <Link to="/purchases/new" className={primaryLinkClass}>
                                         Record inward stock
-                                    </Link>
+                                    </Link></>}
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -174,6 +137,7 @@ export const PurchasesListPage: React.FC = () => {
                         )}
                     </TableBody>
                 </Table>
+                {!error && <Pagination page={page} limit={limit} total={total} onPage={setPage} busy={loading || fetching} />}
             </Card>
         </div>
     );

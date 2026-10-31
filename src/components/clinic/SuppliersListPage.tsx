@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useId, useState } from "react";
 import { Plus } from "lucide-react";
 import toast from "react-hot-toast";
-import api from "../../lib/api";
+import { useDirectory } from "../../hooks/useDirectory";
+import { LoadError, NoSearchResults, Pagination } from "../ui/ListFeedback";
 import type { Supplier } from "../../core/types";
 import { SupplierService } from "../../services/supplierService";
 import { Button } from "../ui/Button";
@@ -18,8 +19,7 @@ import {
 } from "../ui/Table";
 
 export const SuppliersListPage: React.FC = () => {
-  const [rows, setRows] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
+    const formId = useId();
   const [q, setQ] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -30,36 +30,7 @@ export const SuppliersListPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
 
-  const loadSuppliers = useCallback(async () => {
-    const res = await api.get("/suppliers?limit=200");
-    const list = res.data?.data || res.data || [];
-    setRows(list);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        await loadSuppliers();
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [loadSuppliers]);
-
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return rows;
-    return rows.filter(
-      (x) =>
-        x.name.toLowerCase().includes(s) ||
-        x.phone.toLowerCase().includes(s) ||
-        (x.gstin || "").toLowerCase().includes(s),
-    );
-  }, [rows, q]);
+  const { rows: filtered, loading, error, refresh, page, limit, total, setPage, fetching } = useDirectory<Supplier>("/suppliers", q);
 
   const resetForm = () => {
     setName("");
@@ -108,7 +79,7 @@ export const SuppliersListPage: React.FC = () => {
         address: address.trim(),
         ...(email.trim() ? { email: email.trim() } : {}),
       });
-      await loadSuppliers();
+      await refresh();
       toast.success("Supplier added");
       setModalOpen(false);
       resetForm();
@@ -149,10 +120,12 @@ export const SuppliersListPage: React.FC = () => {
         <Input
           placeholder="Search company, GSTIN, phone…"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => { setQ(e.target.value); setPage(1); }}
+          aria-label="Search suppliers"
           icon="🔍"
         />
-        <Table>
+        {error && <LoadError onRetry={() => void refresh()} />}
+        <Table aria-busy={loading || fetching}>
           <TableHeader>
             <TableRow>
               <TableCell className="text-muted font-bold uppercase text-xs tracking-wider">
@@ -173,7 +146,7 @@ export const SuppliersListPage: React.FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {error ? null : loading ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted py-12">
                   Loading suppliers…
@@ -182,10 +155,11 @@ export const SuppliersListPage: React.FC = () => {
             ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-16 text-muted">
+                  {q.trim() ? <NoSearchResults onClear={() => { setQ(""); setPage(1); }} /> : <>
                   <p className="font-medium mb-2">No suppliers yet.</p>
                   <p className="text-sm">
                     Add vendors before recording purchases.
-                  </p>
+                  </p></>}
                 </TableCell>
               </TableRow>
             ) : (
@@ -209,6 +183,7 @@ export const SuppliersListPage: React.FC = () => {
             )}
           </TableBody>
         </Table>
+        {!error && <Pagination page={page} limit={limit} total={total} onPage={setPage} busy={loading || fetching} />}
       </Card>
 
       <Modal
@@ -227,8 +202,8 @@ export const SuppliersListPage: React.FC = () => {
             </Button>
             <Button
               variant="primary"
-              type="button"
-              onClick={() => void handleSave()}
+              type="submit"
+              form={formId}
               disabled={saving}
             >
               {saving ? "Saving…" : "Save supplier"}
@@ -236,13 +211,12 @@ export const SuppliersListPage: React.FC = () => {
           </>
         }
       >
-        <div className="space-y-4">
+        <form id={formId} onSubmit={event => { event.preventDefault(); void handleSave(); }} className="space-y-4">
           <Input
             label="Company name *"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Cipla Distributors"
-            autoFocus
           />
           <Input
             label="GSTIN"
@@ -273,7 +247,7 @@ export const SuppliersListPage: React.FC = () => {
             onChange={(e) => setAddress(e.target.value)}
             placeholder="City, state"
           />
-        </div>
+        </form>
       </Modal>
     </div>
   );

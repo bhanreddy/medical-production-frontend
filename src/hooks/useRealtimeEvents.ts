@@ -133,6 +133,8 @@ function handleEvent(event: { type: string; payload?: any }, queryClient: Return
 
     case 'EXPENSE_ADDED':
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['directory', '/expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['clinic-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['expense-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['reports'] });

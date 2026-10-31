@@ -61,7 +61,7 @@ export const SupplierSchemesPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground-strong tracking-tight flex items-center gap-2">
             <Truck className="w-7 h-7 text-info" />
-            Procurement Supplier Schemes
+            Supplier schemes
           </h1>
           <p className="text-muted text-sm mt-1">
             Configure Buy 10 Get 1 Free, Trade Discounts, and automatic blended effective acquisition unit costs.

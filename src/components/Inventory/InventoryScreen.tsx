@@ -77,9 +77,9 @@ export const InventoryScreen: React.FC = () => {
         <div className="h-full flex flex-col gap-8 animate-slideIn select-none" data-pos-local-fkeys="true">
             <div className="flex justify-between items-end">
                 <div className="space-y-1">
-                    <h2 className="text-billing-total font-black text-foreground-strong tracking-tighter uppercase italic leading-none">
+                    <h1 className="text-billing-total font-black text-foreground-strong tracking-tighter uppercase italic leading-none">
                         {INVENTORY_PAGE_COPY.title}
-                    </h2>
+                    </h1>
                     <p className="text-muted text-sm font-black uppercase tracking-widest">{subtitle}</p>
                     {viewMode === 'active' && attentionFilter === 'low_stock' && (
                         <p className="text-xs text-danger font-bold mt-2 flex flex-wrap items-center gap-2">

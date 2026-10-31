@@ -1,4 +1,5 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { ConnectionStatus, WorkspaceRoute } from '../layout/WorkspaceRoute';
 import { useAuth } from '../../lib/auth';
 import { LayoutDashboard, Building2, Users, Activity, LogOut } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -16,6 +17,7 @@ export const AdminLayout = () => {
 
     return (
         <div className="admin-workspace flex h-screen bg-background text-foreground overflow-hidden">
+            <a href="#workspace-content" className="skip-link">Skip to page content</a>
             {/* Sidebar */}
             <aside className="w-64 bg-bg-surface border-r border-border flex flex-col">
                 <div className="p-6 border-b border-border">
@@ -59,8 +61,9 @@ export const AdminLayout = () => {
             </aside>
 
             {/* Main Content */}
-            <main className="premium-content flex-1 min-w-0 overflow-y-auto relative">
-                <Outlet />
+            <main id="workspace-content" tabIndex={-1} className="premium-content flex-1 min-w-0 overflow-y-auto relative">
+                <ConnectionStatus />
+                <WorkspaceRoute />
             </main>
         </div>
     );

@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as Dialog from '@radix-ui/react-dialog';
 import type { LucideIcon } from "lucide-react";
-import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ConnectionStatus, WorkspaceRoute } from '../layout/WorkspaceRoute';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useAuth } from "../../lib/auth";
@@ -52,6 +54,7 @@ export const ClinicLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const alertsTriggerRef = useRef<HTMLButtonElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -226,6 +229,7 @@ export const ClinicLayout = () => {
     .sort((a, b) => b.path.length - a.path.length)[0];
   const pageLabel = location.pathname === '/billing/new' ? 'New invoice'
     : location.pathname === '/purchases/new' ? 'New purchase'
+    : location.pathname.startsWith('/patients/') ? 'Medication history'
     : activeNav?.name || 'Workspace';
 
   const renderNavLinks = (links: NavItem[]) => {
@@ -261,6 +265,7 @@ export const ClinicLayout = () => {
     <div
       className={`flex h-screen bg-bg-primary text-foreground overflow-hidden clinic-liquid-shell ${mobileMenuOpen ? "is-mobile-menu-open" : ""}`}
     >
+      <a href="#workspace-content" className="skip-link">Skip to page content</a>
       {mobileMenuOpen && (
         <button
           className="liquid-menu-scrim"
@@ -461,6 +466,7 @@ export const ClinicLayout = () => {
           </button>
           <button
             type="button"
+            ref={alertsTriggerRef}
             className="workspace-icon-button relative"
             title="Inventory alerts"
             onClick={() => setAlertsOpen(!alertsOpen)}
@@ -506,30 +512,24 @@ export const ClinicLayout = () => {
             </Button>
           </div>
         )}
-        <main className="premium-content flex-1 min-w-0 overflow-y-auto overflow-x-hidden relative bg-background">
-          <Outlet />
+        <ConnectionStatus />
+        <main id="workspace-content" tabIndex={-1} className="premium-content flex-1 min-w-0 overflow-y-auto overflow-x-hidden relative bg-background">
+          <WorkspaceRoute label={pageLabel} />
 
           {/* Alerts Drawer Overlay Placeholder for Block 3 */}
-          {alertsOpen && (
-            <>
-              <div
+          <Dialog.Root open={alertsOpen} onOpenChange={setAlertsOpen}><Dialog.Portal>
+              <Dialog.Overlay
                 className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]"
-                onClick={() => setAlertsOpen(false)}
-                aria-hidden
               />
-              <aside
+              <Dialog.Content asChild aria-describedby={undefined} onCloseAutoFocus={event => { event.preventDefault(); alertsTriggerRef.current?.focus(); }}><aside
                 className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-surface border-l-2 border-border z-50 shadow-2xl flex flex-col"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="alerts-drawer-title"
               >
                 <div className="flex justify-between items-center gap-3 p-4 border-b border-border bg-surface-elevated/80">
-                  <h3
-                    id="alerts-drawer-title"
+                  <Dialog.Title
                     className="font-black text-lg tracking-tight text-foreground-strong"
                   >
                     Alerts
-                  </h3>
+                  </Dialog.Title>
                   <button
                     type="button"
                     onClick={() => setAlertsOpen(false)}
@@ -543,11 +543,7 @@ export const ClinicLayout = () => {
                   className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar"
                   aria-busy={alertsLoading}
                 >
-                  <p className="text-xs text-muted leading-relaxed">
-                    Counts follow Settings (expiry window &amp; per-SKU minimum
-                    stock). Inventory data is from this device&apos;s local
-                    database.
-                  </p>
+                  <p className="text-xs text-muted leading-relaxed">Review low stock, expiry risks, and your reorder queue. Adjust the warning window in Settings.</p>
 
                   {alertsLoading && !alertSummary ? (
                     <div className="space-y-3">
@@ -665,9 +661,8 @@ export const ClinicLayout = () => {
                     </>
                   )}
                 </div>
-              </aside>
-            </>
-          )}
+              </aside></Dialog.Content>
+          </Dialog.Portal></Dialog.Root>
         </main>
       </div>
     </div>

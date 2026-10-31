@@ -4,10 +4,11 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: './',
+  base: '/',
   server: {
     port: 8082,
     strictPort: true,
+    proxy: { '/api': 'http://127.0.0.1:5001' },
   },
   plugins: [
     react(),
@@ -17,7 +18,9 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
+          vendor: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime'],
+          auth: ['@supabase/supabase-js'],
+          router: ['react-router-dom'],
         },
       },
     },

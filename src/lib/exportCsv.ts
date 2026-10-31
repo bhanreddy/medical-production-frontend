@@ -2,7 +2,7 @@
 import Papa from 'papaparse';
 
 export function exportToCsv(filename: string, rows: Record<string, unknown>[]): void {
-  const csv = Papa.unparse(rows);
+  const csv = Papa.unparse(rows, { escapeFormulae: true });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -14,4 +14,5 @@ export function exportToCsv(filename: string, rows: Record<string, unknown>[]): 
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }

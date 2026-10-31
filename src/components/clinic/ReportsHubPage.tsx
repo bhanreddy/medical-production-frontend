@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { LineChart as LineChartIcon, ShoppingCart, Wallet, FileText, PieChart } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
+import { fetchAllPages } from '../../lib/fetchAllPages';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -146,13 +147,12 @@ export const ReportsHubPage: React.FC = () => {
                     break;
                 }
                 case 'expense': {
-                    const [summaryRes, listRes] = await Promise.all([
+                    const [summaryRes, expenses] = await Promise.all([
                         api.get('/expenses/summary', { params: { from: fromDate, to: toDate } }),
-                        api.get('/expenses', { params: { from: fromDate, to: toDate, limit: 100 } }),
+                        fetchAllPages<Record<string, unknown>>('/expenses', { from: fromDate, to: toDate }),
                     ]);
                     const summary = summaryRes.data?.data?.summary ?? [];
                     const grandTotal = Number(summaryRes.data?.data?.grand_total ?? 0);
-                    const expenses = listRes.data?.data ?? [];
                     nextPreview = {
                         title: 'Expense report',
                         summary: [
@@ -255,7 +255,8 @@ export const ReportsHubPage: React.FC = () => {
                     containerClassName="flex-1"
                     className="py-2.5"
                     value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
+                    disabled={loading}
+                    onChange={(e) => { setFromDate(e.target.value); setPreview(null); }}
                 />
                 <Input
                     type="date"
@@ -263,7 +264,8 @@ export const ReportsHubPage: React.FC = () => {
                     containerClassName="flex-1"
                     className="py-2.5"
                     value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
+                    disabled={loading}
+                    onChange={(e) => { setToDate(e.target.value); setPreview(null); }}
                 />
                 <Button
                     variant="primary"
@@ -284,7 +286,8 @@ export const ReportsHubPage: React.FC = () => {
                         <button
                             key={r.id}
                             type="button"
-                            onClick={() => setSelected(r.id)}
+                            disabled={loading}
+                            onClick={() => { setSelected(r.id); setPreview(null); }}
                             aria-pressed={active}
                             className={`report-option text-left rounded-xl border-2 p-5 transition-all hover:shadow-lg ${
                                 active ? 'border-primary bg-primary/5 shadow-md' : 'border-border bg-bg-surface hover:border-primary/40'

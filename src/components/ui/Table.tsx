@@ -1,6 +1,9 @@
-import React from "react";
+import React, { createContext, useContext } from "react";
+
 import clsx from "clsx";
 import { twMerge } from "tailwind-merge";
+
+const InTableHeader = createContext(false);
 
 // --- NEW PRIMITIVES FOR FLEXIBLE TABLES (PHASE 5+) ---
 
@@ -24,13 +27,13 @@ export const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead
+  <InTableHeader.Provider value={true}><thead
     ref={ref}
     className={twMerge(
       clsx("bg-surface-elevated border-b border-border", className),
     )}
     {...props}
-  />
+  /></InTableHeader.Provider>
 ));
 TableHeader.displayName = "TableHeader";
 
@@ -68,13 +71,12 @@ TableRow.displayName = "TableRow";
 export const TableCell = React.forwardRef<
   HTMLTableCellElement,
   React.TdHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
-  <td
-    ref={ref}
-    className={twMerge(clsx("px-4 py-3 align-middle", className))}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const header = useContext(InTableHeader);
+  const Cell = header ? 'th' : 'td';
+  return <Cell ref={ref} scope={header ? 'col' : undefined}
+    className={twMerge(clsx("px-4 py-3 align-middle", className))} {...props} />;
+});
 TableCell.displayName = "TableCell";
 
 // --- HYBRID TABLE COMPONENT ---

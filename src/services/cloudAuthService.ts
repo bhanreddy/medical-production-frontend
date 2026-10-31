@@ -100,22 +100,14 @@ export const CloudAuthService = {
     phone: string;
   }) {
     sessionClient.beginSignIn();
-    const { data, error } = await supabase.auth.signUp({
-      email: params.email,
-      password: params.password,
-      options: {
-        data: {
-          full_name: params.name,
-          shop_name: params.shopName,
-          phone: params.phone,
-        },
-      },
+    const { data: response } = await api.post('/auth/register', {
+      email: params.email, password: params.password, full_name: params.name,
+      clinic_name: params.shopName, phone: params.phone,
     });
-    if (error) throw error;
-    if (!data.session) {
-      throw new Error(
-        'No session after sign up. If email confirmation is enabled in Supabase, disable it for this desktop flow or confirm the email before continuing.',
-      );
+    const data = response.data;
+    if (data.session) {
+      const { error } = await supabase.auth.setSession({ access_token: data.session.access_token, refresh_token: data.session.refresh_token });
+      if (error) throw error;
     }
     return data;
   },
