@@ -4,6 +4,7 @@ import { AuthFrame } from './components/auth/AuthFrame';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth, observeAuthSession } from './lib/auth';
 import { AuthGuard } from './components/auth/AuthGuard';
+import { ResetPasswordScreen } from './components/auth/ResetPasswordScreen';
 import { LoginFlowPage } from './components/auth/LoginFlowPage';
 import { HomeRedirect } from './components/auth/HomeRedirect';
 import { PaymentReturnPage } from './components/auth/PaymentReturnPage';
@@ -79,6 +80,7 @@ const router = createBrowserRouter([
         children: [
             { index: true, element: <HomeRedirect /> },
             { path: 'login', element: <LoginFlowPage /> },
+            { path: 'reset-password', element: <ResetPasswordScreen /> },
             { path: 'register', element: <RegisterWizard /> },
             { path: getUserSubscriptionReturnPath(), element: <PaymentReturnPage /> },
             { path: '403', element: <Error403 /> },

@@ -6,6 +6,13 @@ import { isTauri } from '@tauri-apps/api/core';
 import { load, type Store } from '@tauri-apps/plugin-store';
 
 const STORE_FILENAME = 'medpos_app_store.json';
+const REMEMBER_SESSION_KEY = 'medpos_remember_session';
+
+export function remembersSession(): boolean {
+  try { return localStorage.getItem(REMEMBER_SESSION_KEY) !== 'false'; }
+  catch { return true; }
+}
+
 
 let storePromise: Promise<Store | null> | null = null;
 
@@ -50,6 +57,10 @@ export type SubscriptionEntitlementCache = {
 };
 
 async function readRaw(key: string): Promise<string | null> {
+  if (!remembersSession()) {
+    try { return sessionStorage.getItem(key); }
+    catch { throw new Error('Session storage is temporarily unavailable.'); }
+  }
   const s = await getStore();
   if (s) {
     const v = await s.get<string>(key);
@@ -63,6 +74,18 @@ async function readRaw(key: string): Promise<string | null> {
 }
 
 async function writeRaw(key: string, value: string | null): Promise<void> {
+  if (!remembersSession()) {
+    try {
+      if (value === null) sessionStorage.removeItem(key);
+      else sessionStorage.setItem(key, value);
+      localStorage.removeItem(key);
+    } catch { throw new Error('Session storage is temporarily unavailable.'); }
+    const durable = await getStore();
+    if (durable) { await durable.delete(key); await durable.save(); }
+    return;
+  }
+  // Discard any old tab-only copy when durable storage is selected.
+  try { sessionStorage.removeItem(key); } catch { /* unavailable */ }
   const s = await getStore();
   if (s) {
     if (value === null) await s.delete(key);
@@ -137,3 +160,16 @@ export const authStorage = {
   setItem: (key: string, value: string) => writeRaw(key, value),
   removeItem: (key: string) => writeRaw(key, null),
 };
+
+/** Set before password login so both the SDK and POS respect Remember me. */
+export async function setSessionPersistence(remember: boolean, sdkStorageKey: string): Promise<void> {
+  const keys = [...Object.values(STORE_KEYS), sdkStorageKey, `${sdkStorageKey}-user`, `${sdkStorageKey}-code-verifier`];
+  const durable = await getStore();
+  for (const key of keys) {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+    if (durable) await durable.delete(key);
+  }
+  if (durable) await durable.save();
+  localStorage.setItem(REMEMBER_SESSION_KEY, String(remember));
+}

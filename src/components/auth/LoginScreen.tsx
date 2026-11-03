@@ -5,12 +5,15 @@ import {
   ArrowRight,
   ArrowUpRight,
   CircleAlert,
+  CircleCheck,
   Eye,
   EyeOff,
   LoaderCircle,
   LockKeyhole,
   Mail,
 } from "lucide-react";
+import { supabase, SUPABASE_AUTH_STORAGE_KEY } from "../../lib/supabase";
+import { remembersSession, setSessionPersistence } from "../../lib/store";
 import { uiSlice } from "../../state/slices";
 import type { RootState } from "../../state/store";
 import { CloudAuthService } from "../../services/cloudAuthService";
@@ -30,6 +33,9 @@ export function LoginScreen({ onNavigate }: LoginScreenProps) {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
+  const [rememberMe, setRememberMe] = useState(remembersSession);
+  const [resetMode, setResetMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const dispatch = useDispatch();
   const { isLoading } = useSelector((s: RootState) => s.ui);
@@ -40,6 +46,15 @@ export function LoginScreen({ onNavigate }: LoginScreenProps) {
     setError("");
     dispatch(uiSlice.actions.setLoading(true));
     try {
+      if (resetMode) {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (resetError) throw resetError;
+        setResetSent(true);
+        return;
+      }
+      await setSessionPersistence(rememberMe, SUPABASE_AUTH_STORAGE_KEY);
       await CloudAuthService.signInAndPersist({
         email: email.trim(),
         password,
@@ -79,7 +94,8 @@ export function LoginScreen({ onNavigate }: LoginScreenProps) {
             />
           </div>
         </div>
-        <div className="login-field">
+        {resetMode && <p className="login-field-note">Enter your account email to receive a password reset link.</p>}
+        {!resetMode && <><div className="login-field">
           <label htmlFor="login-password">Password</label>
           <div className="login-input-wrap">
             <LockKeyhole size={18} aria-hidden="true" />
@@ -123,6 +139,16 @@ export function LoginScreen({ onNavigate }: LoginScreenProps) {
             </span>
           )}
         </div>
+        </>}
+        {resetMode ? (
+          <button type="button" className="login-text-button" onClick={() => { setResetMode(false); setResetSent(false); setError(""); }}>Back to login</button>
+        ) : (
+          <div className="login-options">
+            <label className="login-remember"><input type="checkbox" checked={rememberMe} onChange={event => setRememberMe(event.target.checked)} disabled={isLoading} />Remember me</label>
+            <button type="button" className="login-text-button" disabled={isLoading} onClick={() => { setResetMode(true); setError(""); }}>Forgot password?</button>
+          </div>
+        )}
+        {resetSent && <div className="login-success" role="status"><CircleCheck size={18} aria-hidden="true" /><span>If an account exists for this email, a password reset link is on its way.</span></div>}
         {error && (
           <div id="login-error" className="login-error" role="alert">
             <CircleAlert size={18} aria-hidden="true" />
@@ -137,11 +163,11 @@ export function LoginScreen({ onNavigate }: LoginScreenProps) {
                 className="animate-spin"
                 aria-hidden="true"
               />{" "}
-              Signing you in…
+              {resetMode ? "Sending reset link…" : "Signing you in…"}
             </>
           ) : (
             <>
-              Sign in to your workspace{" "}
+              {resetMode ? "Send reset link" : "Login"}{" "}
               <ArrowRight size={18} aria-hidden="true" />
             </>
           )}
@@ -149,7 +175,7 @@ export function LoginScreen({ onNavigate }: LoginScreenProps) {
       </form>
 
       <div className="login-switch">
-        <span>New to MedPOS?</span>
+        <span>New to Nexsyrus?</span>
         <button
           type="button"
           disabled={isLoading}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type HTMLAttributes } from 'react';
 import { Link } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
@@ -28,7 +28,44 @@ import {
 } from 'recharts';
 import { useClinicDashboardData } from '../../hooks/useClinicDashboardData';
 import { useAuth } from '../../lib/auth';
-import { LiquidSurface } from '../glass/LiquidGlass';
+
+function DashboardCard({ children, className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div {...props} className={`dashboard-card ${className}`}><div className="liquid-content">{children}</div></div>;
+}
+
+/** Observe the actual scrolling workspace; reveal each section once. */
+function useDashboardReveal() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || !('IntersectionObserver' in window)) return;
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let observer: IntersectionObserver | undefined;
+    const sections = Array.from(element.querySelectorAll<HTMLElement>('[data-reveal]'));
+    const observe = () => {
+      observer?.disconnect();
+      sections.forEach(section => section.classList.remove('reveal-pending'));
+      if (motion.matches) return;
+      observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.remove('reveal-pending');
+            observer?.unobserve(entry.target);
+          }
+        });
+      }, { root: element.closest('main'), threshold: 0.08 });
+      sections.forEach(section => {
+        section.classList.add('reveal-pending');
+        observer?.observe(section);
+      });
+    };
+    observe();
+    motion.addEventListener('change', observe);
+    return () => { observer?.disconnect(); motion.removeEventListener('change', observe); };
+  }, []);
+  return ref;
+}
+
 
 export interface DashboardData {
   today_revenue?: number | string;
@@ -73,6 +110,7 @@ export function ClinicDashboardView({
   refreshing?: boolean;
   onRefresh?: () => void;
 }) {
+  const revealRef = useDashboardReveal();
   const [chartStyle, setChartStyle] = useState<'area' | 'line'>('area');
   const unavailable = error && !data;
   const bills = Number(data?.today_bills || 0);
@@ -134,7 +172,7 @@ export function ClinicDashboardView({
       currency(amount)
     );
   return (
-    <div className="liquid-dashboard" aria-busy={loading}>
+    <div ref={revealRef} className="liquid-dashboard nex-dashboard" aria-busy={loading}>
       <div className="dashboard-heading">
         <div>
           <div className="dashboard-eyebrow">
@@ -143,7 +181,6 @@ export function ClinicDashboardView({
           <h1>
             {greeting}, <span>{name}.</span>
           </h1>
-          <p>Here is how your pharmacy is doing today.</p>
           {refreshing && !loading && (
             <p className="dashboard-heading-status" aria-live="polite">
               Updating your latest figures…
@@ -190,8 +227,8 @@ export function ClinicDashboardView({
           </button>
         </div>
       )}
-      <div className="dashboard-overview">
-        <LiquidSurface className="dashboard-revenue liquid-refractive">
+      <div className="dashboard-overview" data-reveal="">
+        <DashboardCard className="dashboard-revenue">
           <div className="dashboard-card-heading">
             <span>
               <span className="status-dot" /> TODAY AT A GLANCE
@@ -200,9 +237,6 @@ export function ClinicDashboardView({
           </div>
           <div className="revenue-label">Today’s revenue</div>
           <div className="revenue-value">{value(data?.today_revenue)}</div>
-          <p className="revenue-caption">
-            Sales recorded across today’s invoices.
-          </p>
           <div className="revenue-footer">
             <div>
               <span>Invoices created</span>
@@ -221,12 +255,11 @@ export function ClinicDashboardView({
               <CirclePlus size={18} /> New sale <ArrowUpRight size={16} />
             </Link>
           </div>
-        </LiquidSurface>
-        <LiquidSurface className="dashboard-trend">
+        </DashboardCard>
+        <DashboardCard className="dashboard-trend">
           <div className="dashboard-section-heading">
             <div>
-              <p className="dashboard-eyebrow">YOUR LAST SEVEN DAYS</p>
-              <h2>Revenue flow</h2>
+              <h2>Weekly report</h2>
             </div>
             <div
               className="liquid-segment"
@@ -362,23 +395,15 @@ export function ClinicDashboardView({
                 <p>
                   {unavailable
                     ? 'Revenue is unavailable. Refresh to try again.'
-                    : 'Your revenue story starts with your first sale.'}
+                    : 'No sales this week.'}
                 </p>
               </div>
             )}
           </div>
-        </LiquidSurface>
+        </DashboardCard>
       </div>
-      <div className="dashboard-financials">
+      <div className="dashboard-financials" data-reveal="">
         {[
-          {
-            label: 'Week’s revenue',
-            amount: data?.week_revenue,
-            hint: 'Your last seven days',
-            icon: ChartNoAxesCombined,
-            tone: 'violet',
-            path: '/analytics',
-          },
           {
             label: 'To collect',
             amount: data?.outstanding_receivable,
@@ -402,7 +427,7 @@ export function ClinicDashboardView({
             className="dashboard-metric-link"
             aria-label={`${metric.label}: ${loading || unavailable ? 'loading' : currency(metric.amount)}. ${metric.hint}`}
           >
-            <LiquidSurface
+            <DashboardCard
               className={`dashboard-metric metric-${metric.tone}`}
             >
               <div className={`dashboard-symbol tone-${metric.tone}`}>
@@ -411,45 +436,39 @@ export function ClinicDashboardView({
               <div>
                 <span>{metric.label}</span>
                 <strong>{value(metric.amount)}</strong>
-                <small>{metric.hint}</small>
               </div>
               <span className="metric-link" aria-hidden>
                 <ArrowUpRight size={18} />
               </span>
-            </LiquidSurface>
+            </DashboardCard>
           </Link>
         ))}
       </div>
       <div className="dashboard-section-heading dashboard-actions-title">
         <h2>Quick actions</h2>
-        <span>YOUR EVERYDAY ESSENTIALS</span>
       </div>
-      <LiquidSurface className="dashboard-quick-actions">
+      <DashboardCard className="dashboard-quick-actions" data-reveal="">
         {[
           {
             label: 'Create invoice',
-            sub: 'Start a new sale',
             icon: ReceiptText,
             to: '/billing/new',
             tone: 'violet',
           },
           {
             label: 'Manage stock',
-            sub: 'Products & availability',
             icon: Package,
             to: '/inventory',
             tone: 'blue',
           },
           {
             label: 'Customers',
-            sub: 'Balances & history',
             icon: Users,
             to: '/customers',
             tone: 'violet',
           },
           {
             label: 'View reports',
-            sub: 'Know your numbers',
             icon: Wallet,
             to: '/reports',
             tone: 'amber',
@@ -461,17 +480,15 @@ export function ClinicDashboardView({
             </div>
             <div>
               <strong>{action.label}</strong>
-              <small>{action.sub}</small>
             </div>
             <ArrowUpRight size={15} className="quick-action-arrow" />
           </Link>
         ))}
-      </LiquidSurface>
-      <div className="dashboard-bottom-grid">
-        <LiquidSurface className="dashboard-activity">
+      </DashboardCard>
+      <div className="dashboard-bottom-grid" data-reveal="">
+        <DashboardCard className="dashboard-activity">
           <div className="dashboard-section-heading">
             <div>
-              <p className="dashboard-eyebrow">THE LATEST</p>
               <h2>Recent sales</h2>
             </div>
             <Link className="dashboard-text-link" to="/billing">
@@ -517,7 +534,7 @@ export function ClinicDashboardView({
               <div className="dashboard-empty">
                 <ReceiptText size={26} />
                 <h3>
-                  {unavailable ? 'Sales are unavailable.' : 'A fresh start.'}
+                  {unavailable ? 'Sales are unavailable.' : 'No sales yet'}
                 </h3>
                 <p>
                   {unavailable
@@ -532,11 +549,10 @@ export function ClinicDashboardView({
               </div>
             )}
           </div>
-        </LiquidSurface>
-        <LiquidSurface className="dashboard-attention">
+        </DashboardCard>
+        <DashboardCard className="dashboard-attention">
           <div className="dashboard-section-heading">
             <div>
-              <p className="dashboard-eyebrow">INVENTORY HEALTH</p>
               <h2>Stock alerts</h2>
             </div>
             <ShieldCheck size={21} className="attention-shield" />
@@ -556,7 +572,6 @@ export function ClinicDashboardView({
                   </div>
                   <div>
                     <strong>{item.label}</strong>
-                    <small>{item.hint}</small>
                   </div>
                   <span
                     className={[
@@ -583,13 +598,13 @@ export function ClinicDashboardView({
             />
             <span>
               {loading || unavailable
-                ? 'Review stock levels and upcoming expiry dates.'
+                ? 'Review stock and expiry dates.'
                 : alertTotal === 0
-                  ? 'Stock levels look healthy — no urgent alerts right now.'
-                  : 'Review stock levels and upcoming expiry dates.'}
+                  ? 'Stock is up to date.'
+                  : 'Review stock and expiry dates.'}
             </span>
           </div>
-        </LiquidSurface>
+        </DashboardCard>
       </div>
       <footer className="dashboard-footer">
         <ShieldCheck size={13} className="brand-star" aria-hidden /> Pharmacy overview

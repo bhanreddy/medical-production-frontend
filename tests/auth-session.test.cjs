@@ -518,3 +518,67 @@ test("transient read failures can retry but committed writes are never automatic
     false,
   );
 });
+
+function persistenceHarness(desktop = false, browserValues = new Map(), tabValues = new Map(), nativeValues = new Map()) {
+  const storage = values => ({
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, String(value)),
+    removeItem: key => values.delete(key),
+  });
+  const api = load('lib/store.ts', {
+    '@tauri-apps/api/core': { isTauri: () => desktop },
+    '@tauri-apps/plugin-store': { load: async () => ({
+      get: async key => nativeValues.get(key) ?? null,
+      set: async (key, value) => nativeValues.set(key, value),
+      delete: async key => nativeValues.delete(key),
+      save: async () => {},
+    }) },
+  }, { window: {}, localStorage: storage(browserValues), sessionStorage: storage(tabValues) });
+  return { ...api, browserValues, tabValues, nativeValues };
+}
+
+test('unchecked Remember me keeps SDK and POS credentials in the current tab and survives a reload', async () => {
+  const h = persistenceHarness();
+  await h.setSessionPersistence(false, 'sdk-session');
+  await h.authStorage.setItem('sdk-session', 'tab-token');
+  await h.setPersistedSupabaseSession(session());
+  await h.writeJson(h.STORE_KEYS.AUTH_PROFILE, { id: 'operator' });
+  assert.equal(h.browserValues.has('sdk-session'), false);
+  assert.equal(h.browserValues.has(h.STORE_KEYS.SUPABASE_SESSION), false);
+  const reloaded = persistenceHarness(false, h.browserValues, h.tabValues);
+  assert.equal(await reloaded.authStorage.getItem('sdk-session'), 'tab-token');
+  assert.equal((await reloaded.getPersistedSupabaseSession()).user.id, 'operator');
+  const newTab = persistenceHarness(false, h.browserValues);
+  assert.equal(await newTab.authStorage.getItem('sdk-session'), null);
+  assert.equal(await newTab.getPersistedSupabaseSession(), null);
+  await reloaded.authStorage.removeItem('sdk-session');
+  await reloaded.clearAllAuthPersistence();
+  assert.equal(h.tabValues.has('sdk-session'), false);
+  assert.equal(await reloaded.getPersistedSupabaseSession(), null);
+});
+
+test('Remember me retains browser login across tabs and clears an older tab-only identity', async () => {
+  const h = persistenceHarness();
+  await h.setSessionPersistence(false, 'sdk-session');
+  await h.authStorage.setItem('sdk-session', 'old-tab-token');
+  await h.setSessionPersistence(true, 'sdk-session');
+  await h.authStorage.setItem('sdk-session', 'remembered-token');
+  await h.setPersistedSupabaseSession(session('remembered'));
+  assert.equal(h.tabValues.has('sdk-session'), false);
+  const newTab = persistenceHarness(false, h.browserValues);
+  assert.equal(await newTab.authStorage.getItem('sdk-session'), 'remembered-token');
+  assert.equal((await newTab.getPersistedSupabaseSession()).access_token, 'remembered');
+});
+
+test('unchecked Remember me removes desktop durable credentials and writes no new durable tokens', async () => {
+  const native = new Map([['sdk-session', 'old-token'], ['supabase_session_json', 'old-pos-token'], ['auth_profile_json', 'old-profile']]);
+  const h = persistenceHarness(true, new Map(), new Map(), native);
+  await h.setSessionPersistence(false, 'sdk-session');
+  assert.equal(native.size, 0);
+  await h.authStorage.setItem('sdk-session', 'tab-token');
+  await h.setPersistedSupabaseSession(session());
+  assert.equal(native.size, 0);
+  assert.equal(await h.authStorage.getItem('sdk-session'), 'tab-token');
+  const restarted = persistenceHarness(true, h.browserValues, new Map(), native);
+  assert.equal(await restarted.authStorage.getItem('sdk-session'), null);
+});

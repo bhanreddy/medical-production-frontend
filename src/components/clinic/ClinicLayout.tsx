@@ -153,6 +153,7 @@ export const ClinicLayout = () => {
   const {
     data: alertSummary,
     isLoading: alertsLoading,
+    isError: alertsError,
     refetch: refetchAlerts,
   } = useQuery({
     queryKey: ["clinic-header-alerts", "radar-v2"],
@@ -263,7 +264,7 @@ export const ClinicLayout = () => {
 
   return (
     <div
-      className={`flex h-screen bg-bg-primary text-foreground overflow-hidden clinic-liquid-shell ${mobileMenuOpen ? "is-mobile-menu-open" : ""}`}
+      className={`flex h-screen bg-bg-primary text-foreground overflow-hidden clinic-liquid-shell ${mobileMenuOpen ? "is-mobile-menu-open" : ""} ${location.pathname === "/dashboard" ? "nex-dashboard-shell" : ""}`}
     >
       <a href="#workspace-content" className="skip-link">Skip to page content</a>
       {mobileMenuOpen && (
@@ -516,153 +517,38 @@ export const ClinicLayout = () => {
         <main id="workspace-content" tabIndex={-1} className="premium-content flex-1 min-w-0 overflow-y-auto overflow-x-hidden relative bg-background">
           <WorkspaceRoute label={pageLabel} />
 
-          {/* Alerts Drawer Overlay Placeholder for Block 3 */}
-          <Dialog.Root open={alertsOpen} onOpenChange={setAlertsOpen}><Dialog.Portal>
-              <Dialog.Overlay
-                className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]"
-              />
-              <Dialog.Content asChild aria-describedby={undefined} onCloseAutoFocus={event => { event.preventDefault(); alertsTriggerRef.current?.focus(); }}><aside
-                className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-surface border-l-2 border-border z-50 shadow-2xl flex flex-col"
-              >
-                <div className="flex justify-between items-center gap-3 p-4 border-b border-border bg-surface-elevated/80">
-                  <Dialog.Title
-                    className="font-black text-lg tracking-tight text-foreground-strong"
-                  >
-                    Alerts
-                  </Dialog.Title>
-                  <button
-                    type="button"
-                    onClick={() => setAlertsOpen(false)}
-                    className="text-muted hover:text-foreground text-2xl leading-none p-1 rounded-lg hover:bg-bg-card transition-colors"
-                    aria-label="Close alerts"
-                  >
-                    &times;
-                  </button>
+          <Dialog.Root open={alertsOpen} onOpenChange={setAlertsOpen}>
+            <Dialog.Portal>
+              <Dialog.Overlay className="notification-overlay" />
+              <Dialog.Content className="notification-panel" aria-describedby={undefined} onCloseAutoFocus={event => { event.preventDefault(); alertsTriggerRef.current?.focus(); }}>
+                <div className="notification-heading">
+                  <span className="notification-heading-icon"><Bell size={18} aria-hidden="true" /></span>
+                  <Dialog.Title>Notifications</Dialog.Title>
+                  <Dialog.Close className="notification-close" aria-label="Close alerts"><X size={18} /></Dialog.Close>
                 </div>
-                <div
-                  className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar"
-                  aria-busy={alertsLoading}
-                >
-                  <p className="text-xs text-muted leading-relaxed">Review low stock, expiry risks, and your reorder queue. Adjust the warning window in Settings.</p>
-
+                <div className="notification-list" aria-busy={alertsLoading}>
                   {alertsLoading && !alertSummary ? (
-                    <div className="space-y-3">
-                      {[1, 2, 3].map((i) => (
-                        <div
-                          key={i}
-                          className="h-28 rounded-xl bg-bg-card animate-pulse border border-border"
-                        />
-                      ))}
-                    </div>
+                    <div role="status" aria-label="Loading notifications">{[1, 2, 3].map(i => <div key={i} className="notification-skeleton" />)}</div>
+                  ) : alertsError ? (
+                    <div className="notification-error" role="alert"><p>Notifications couldn’t load.</p><button onClick={() => void refetchAlerts()}>Try again</button></div>
                   ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigate("/inventory?focus=low_stock");
-                          setAlertsOpen(false);
-                        }}
-                        className="w-full text-left rounded-xl border-2 border-danger/50 bg-danger/10 dark:bg-danger/20 hover:bg-danger/15 dark:hover:bg-danger/25 hover:border-danger p-4 shadow-md transition-all group ring-1 ring-danger/20"
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-danger/25 text-danger border border-danger/30">
-                            <AlertTriangle
-                              className="w-6 h-6"
-                              strokeWidth={2.25}
-                              aria-hidden
-                            />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-black uppercase tracking-widest text-danger">
-                              Low stock
-                            </p>
-                            <p className="text-3xl font-black tabular-nums text-foreground-strong mt-1">
-                              {lowStockN}
-                            </p>
-                            <p className="text-sm text-muted mt-0.5">
-                              Medicine SKUs below minimum on-hand threshold
-                            </p>
-                            <span className="mt-3 inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-danger group-hover:gap-2 transition-all">
-                              View in inventory{" "}
-                              <ChevronRight className="w-4 h-4" aria-hidden />
-                            </span>
-                          </div>
-                        </div>
+                    [
+                      { title: 'Low stock', count: lowStockN, message: `${lowStockN} ${lowStockN === 1 ? 'medicine needs' : 'medicines need'} restocking`, clear: 'Stock levels are healthy', icon: AlertTriangle, tone: 'rose', path: '/inventory?focus=low_stock' },
+                      { title: 'Expiring soon', count: expiringN, message: `${expiringN} ${expiringN === 1 ? 'batch needs' : 'batches need'} a review`, clear: 'No batches nearing expiry', icon: CalendarClock, tone: 'amber', path: '/inventory?focus=expiring' },
+                      { title: 'Reorder queue', count: shortbookN, message: `${shortbookN} ${shortbookN === 1 ? 'item is' : 'items are'} ready to reorder`, clear: 'Your reorder queue is clear', icon: ClipboardList, tone: 'blue', path: '/shortbook' },
+                    ].map(item => (
+                      <button key={item.title} type="button" className="notification-item" onClick={() => { navigate(item.path); setAlertsOpen(false); }}>
+                        <span className={`notification-icon notification-icon-${item.tone}`}><item.icon size={18} aria-hidden="true" /></span>
+                        <span className="notification-copy"><strong>{item.title}</strong><span>{item.count > 0 ? item.message : item.clear}</span></span>
+                        {item.count > 0 && <span className="notification-count" aria-label={`${item.count} items`}>{item.count > 99 ? '99+' : item.count}</span>}
+                        <ChevronRight size={14} className="notification-chevron" aria-hidden="true" />
                       </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigate("/inventory?focus=expiring");
-                          setAlertsOpen(false);
-                        }}
-                        className="w-full text-left rounded-xl border-2 border-warning/50 bg-warning/10 dark:bg-warning/20 hover:bg-warning/15 dark:hover:bg-warning/25 hover:border-warning p-4 shadow-md transition-all group ring-1 ring-warning/20"
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-warning/25 text-warning border border-warning/30">
-                            <CalendarClock
-                              className="w-6 h-6"
-                              strokeWidth={2.25}
-                              aria-hidden
-                            />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-black uppercase tracking-widest text-warning">
-                              Expiring / expiry risk
-                            </p>
-                            <p className="text-3xl font-black tabular-nums text-foreground-strong mt-1">
-                              {expiringN}
-                            </p>
-                            <p className="text-sm text-muted mt-0.5">
-                              Batches with stock in the configured expiry window
-                            </p>
-                            <span className="mt-3 inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-warning group-hover:gap-2 transition-all">
-                              View in inventory{" "}
-                              <ChevronRight className="w-4 h-4" aria-hidden />
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigate("/shortbook");
-                          setAlertsOpen(false);
-                        }}
-                        className="w-full text-left rounded-xl border-2 border-success/50 bg-success/10 dark:bg-success/20 hover:bg-success/15 dark:hover:bg-success/25 hover:border-success p-4 shadow-md transition-all group ring-1 ring-success/20"
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-success/25 text-success border border-success/30">
-                            <ClipboardList
-                              className="w-6 h-6"
-                              strokeWidth={2.25}
-                              aria-hidden
-                            />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-black uppercase tracking-widest text-success">
-                              Shortbook
-                            </p>
-                            <p className="text-3xl font-black tabular-nums text-foreground-strong mt-1">
-                              {shortbookN}
-                            </p>
-                            <p className="text-sm text-muted mt-0.5">
-                              Open reorder queue items (when online API is
-                              available)
-                            </p>
-                            <span className="mt-3 inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-success group-hover:gap-2 transition-all">
-                              Open shortbook{" "}
-                              <ChevronRight className="w-4 h-4" aria-hidden />
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-                    </>
+                    ))
                   )}
                 </div>
-              </aside></Dialog.Content>
-          </Dialog.Portal></Dialog.Root>
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
         </main>
       </div>
     </div>
