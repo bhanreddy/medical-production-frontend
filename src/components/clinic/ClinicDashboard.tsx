@@ -17,6 +17,7 @@ import {
   Wallet,
   ChartNoAxesCombined,
   Activity,
+  Plus,
 } from 'lucide-react';
 import {
   Area,
@@ -114,6 +115,7 @@ export function ClinicDashboardView({
   const [chartStyle, setChartStyle] = useState<'area' | 'line'>('area');
   const unavailable = error && !data;
   const bills = Number(data?.today_bills || 0);
+  const recentCustomers = [...new Set((data?.recent_sales ?? []).map(sale => sale.customers?.name?.trim()).filter((customer): customer is string => Boolean(customer)))].slice(0, 3);
   const chart =
     data?.daily_chart?.map((point) => ({
       day: point.date
@@ -227,16 +229,19 @@ export function ClinicDashboardView({
           </button>
         </div>
       )}
-      <div className="dashboard-overview" data-reveal="">
+      <div className="dashboard-hero-row" data-reveal="">
         <DashboardCard className="dashboard-revenue">
           <div className="dashboard-card-heading">
             <span>
               <span className="status-dot" /> TODAY AT A GLANCE
             </span>
-            <ReceiptText size={19} />
+            <span className="dashboard-hero-date"><CalendarDays size={13} aria-hidden />{format(new Date(), 'dd MMM yyyy')}</span>
           </div>
+          <div className="dashboard-hero-body">
+          <div className="dashboard-hero-amount">
           <div className="revenue-label">Today’s revenue</div>
           <div className="revenue-value">{value(data?.today_revenue)}</div>
+          </div>
           <div className="revenue-footer">
             <div>
               <span>Invoices created</span>
@@ -255,7 +260,10 @@ export function ClinicDashboardView({
               <CirclePlus size={18} /> New sale <ArrowUpRight size={16} />
             </Link>
           </div>
+          </div>
         </DashboardCard>
+      </div>
+      <div className="dashboard-insights" data-reveal="">
         <DashboardCard className="dashboard-trend">
           <div className="dashboard-section-heading">
             <div>
@@ -400,9 +408,8 @@ export function ClinicDashboardView({
               </div>
             )}
           </div>
-        </DashboardCard>
-      </div>
-      <div className="dashboard-financials" data-reveal="">
+        </DashboardCard>        <div className="dashboard-utilities">
+      <div className="dashboard-financials">
         {[
           {
             label: 'To collect',
@@ -447,7 +454,7 @@ export function ClinicDashboardView({
       <div className="dashboard-section-heading dashboard-actions-title">
         <h2>Quick actions</h2>
       </div>
-      <DashboardCard className="dashboard-quick-actions" data-reveal="">
+      <DashboardCard className="dashboard-quick-actions">
         {[
           {
             label: 'Create invoice',
@@ -485,10 +492,13 @@ export function ClinicDashboardView({
           </Link>
         ))}
       </DashboardCard>
+        </div>
+      </div>
       <div className="dashboard-bottom-grid" data-reveal="">
         <DashboardCard className="dashboard-activity">
           <div className="dashboard-section-heading">
             <div>
+              {recentCustomers.length > 0 && <div className="dashboard-customer-stack" aria-label="Recent customers">{recentCustomers.map(customer => <span key={customer} title={customer} aria-label={customer}>{customer.split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()}</span>)}</div>}
               <h2>Recent sales</h2>
             </div>
             <Link className="dashboard-text-link" to="/billing">
@@ -557,6 +567,11 @@ export function ClinicDashboardView({
             </div>
             <ShieldCheck size={21} className="attention-shield" />
           </div>
+          <div className="dashboard-stock-layout">
+          <Link to="/inventory" className="dashboard-stock-visual" aria-label="Open inventory overview">
+            <div className="dashboard-stock-image"><img src="/images/login-medical-products-realistic.png" alt="" loading="lazy" /></div>
+            <span>Inventory overview <ArrowUpRight size={16} aria-hidden /></span>
+          </Link>
           <div className="attention-items">
             {attention.map((item) => {
               const count = Number(item.count) || 0;
@@ -592,6 +607,7 @@ export function ClinicDashboardView({
               );
             })}
           </div>
+          </div>
           <div className="attention-note">
             <span
               className={`status-dot${alertTotal === 0 && !loading && !unavailable ? ' status-dot--success' : ''}`}
@@ -606,9 +622,12 @@ export function ClinicDashboardView({
           </div>
         </DashboardCard>
       </div>
-      <footer className="dashboard-footer">
-        <ShieldCheck size={13} className="brand-star" aria-hidden /> Pharmacy overview
-        <span>{format(new Date(), 'dd MMMM yyyy')}</span>
+      <footer className="dashboard-brand-panel" data-reveal="">
+        <div className="dashboard-brand-top">
+          <span className="dashboard-brand-label"><Plus size={20} strokeWidth={2.5} aria-hidden /> Pharmacy workspace</span>
+          <nav aria-label="More pharmacy tools"><Link to="/purchases">Purchases <ArrowUpRight size={13} aria-hidden /></Link><Link to="/shortbook">Reorder <ArrowUpRight size={13} aria-hidden /></Link><Link to="/reports">Reports <ArrowUpRight size={13} aria-hidden /></Link></nav>
+        </div>
+        <div className="dashboard-brand-wordmark">nexsyrus</div>
       </footer>
     </div>
   );
