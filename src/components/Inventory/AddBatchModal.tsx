@@ -186,7 +186,7 @@ export const AddBatchModal: React.FC<AddBatchModalProps> = ({ isOpen, onClose, o
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50  p-4">
             <div className="bg-surface w-full max-w-2xl border-2 border-border rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
                 <div className="p-6 border-b border-border flex justify-between items-center bg-surface-elevated rounded-t-xl">
                     <h3 className="text-xl font-black uppercase tracking-tight text-foreground-strong">

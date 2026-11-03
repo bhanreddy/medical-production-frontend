@@ -149,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeNavId, onNavigate, navIt
             <div className="relative px-2 pt-3 pb-2.5 border-b border-border/80 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/12 via-transparent to-primary/8 pointer-events-none" />
                 <p className="relative text-[9px] font-black uppercase tracking-[0.18em] text-foreground-strong leading-tight text-center">
-                    MedPOS
+                    Nexsyrus
                 </p>
                 <p className="relative text-[7px] font-bold text-muted text-center mt-1 tracking-wide">F1 → F12</p>
                 <div className="relative mt-2 h-px w-full bg-gradient-to-r from-transparent via-primary/35 to-transparent rounded-full" />

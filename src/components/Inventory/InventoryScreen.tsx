@@ -74,7 +74,7 @@ export const InventoryScreen: React.FC = () => {
               : INVENTORY_PAGE_COPY.subtitleDisposed(disposedItems.length);
 
     return (
-        <div className="h-full flex flex-col gap-8 animate-slideIn select-none" data-pos-local-fkeys="true">
+        <div className="flex flex-col gap-4 animate-slideIn select-none" data-pos-local-fkeys="true">
             <div className="flex justify-between items-end">
                 <div className="space-y-1">
                     <h1 className="text-billing-total font-black text-foreground-strong tracking-tighter uppercase italic leading-none">
@@ -104,14 +104,14 @@ export const InventoryScreen: React.FC = () => {
                         placeholder={INVENTORY_PAGE_COPY.searchPlaceholder}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        containerClassName="w-96"
+                        containerClassName="w-full sm:w-72"
                         icon="🔍"
-                        className="py-4 font-bold"
+                        className="py-2.5 font-medium"
                     />
                     {viewMode === 'active' && (
                         <Button
                             variant="primary"
-                            className="h-[60px] whitespace-nowrap px-8 font-black"
+                            className="min-h-10 whitespace-nowrap px-4 font-semibold"
                             onClick={() => setIsAddBatchModalOpen(true)}
                         >
                             {INVENTORY_PAGE_COPY.newBatch}
@@ -163,7 +163,7 @@ export const InventoryScreen: React.FC = () => {
                 </div>
             )}
 
-            <div className="flex-1 min-h-0 bg-surface border-2 border-border rounded-xl overflow-hidden flex flex-col shadow-2xl">
+            <div className="bg-surface border border-border rounded-xl overflow-hidden">
                 <Table
                     headers={tableHeaders}
                     data={tableData}
@@ -303,10 +303,10 @@ const MiniStat = ({ label, value, variant }: { label: string; value: string; var
 
     return (
         <div
-            className={`bg-surface-elevated border-2 ${borders[variant]} p-5 rounded-xl flex flex-col justify-center items-center text-center transition-all hover:brightness-110`}
+            className={`bg-surface-elevated border-2 ${borders[variant]} p-3 rounded-xl flex flex-col justify-center transition-all hover:brightness-110`}
         >
-            <span className="text-label font-black uppercase tracking-[0.2em] text-muted mb-2">{label}</span>
-            <span className={`text-3xl font-black tabular-nums ${text[variant]}`}>{value}</span>
+            <span className="text-label font-black uppercase tracking-[0.2em] text-muted mb-1">{label}</span>
+            <span className={`text-2xl font-black tabular-nums ${text[variant]}`}>{value}</span>
         </div>
     );
 };

@@ -58,7 +58,7 @@ export const OrderDetailWorkspace: React.FC<OrderDetailWorkspaceProps> = ({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/60  z-50 flex items-center justify-center p-4">
         <div className="bg-surface-elevated border border-border p-8 rounded-xl text-center max-w-md w-full shadow-2xl">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-sm font-semibold text-foreground">Loading Order Details...</p>
@@ -69,7 +69,7 @@ export const OrderDetailWorkspace: React.FC<OrderDetailWorkspaceProps> = ({
 
   if (error || !data) {
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/60  z-50 flex items-center justify-center p-4">
         <div className="bg-surface-elevated border border-danger/40 p-6 rounded-xl text-center max-w-md w-full shadow-2xl">
           <p className="text-danger font-bold mb-2">Error Loading Order</p>
           <p className="text-xs text-muted mb-4">{error || 'Order record not found'}</p>
@@ -102,7 +102,7 @@ export const OrderDetailWorkspace: React.FC<OrderDetailWorkspaceProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden animate-fadeIn">
+    <div className="fixed inset-0 bg-black/75  z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden animate-fadeIn">
       <div className="bg-surface border border-border w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden text-foreground-strong">
         {/* Header bar */}
         <div className="px-6 py-4 bg-surface-elevated/80 border-b border-border flex justify-between items-center flex-wrap gap-4">

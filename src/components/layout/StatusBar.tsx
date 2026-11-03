@@ -6,7 +6,7 @@ export const StatusBar: React.FC = () => {
     const { statusMessage, isLoading } = useSelector((state: RootState) => state.ui);
 
     return (
-        <footer className="relative h-10 shrink-0 z-10 flex items-center justify-between px-4 sm:px-5 text-xs font-semibold tracking-tight border-t border-border/80 bg-surface/90 backdrop-blur-sm">
+        <footer className="relative h-10 shrink-0 z-10 flex items-center justify-between px-4 sm:px-5 text-xs font-semibold tracking-tight border-t border-border/80 bg-surface/90 ">
             <div
                 className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"
                 aria-hidden

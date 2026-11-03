@@ -1,5 +1,5 @@
 import React, { forwardRef, useId } from "react";
-import { CircleAlert } from 'lucide-react';
+import { CircleAlert, Search } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -30,7 +30,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <div className="relative group">
           {icon && (
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-primary transition-colors">
-              {icon}
+              {icon === "🔍" ? <Search size={16} aria-hidden /> : icon}
             </span>
           )}
           <input

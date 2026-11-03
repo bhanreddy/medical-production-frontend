@@ -154,7 +154,7 @@ export const PickingWorkspace: React.FC<PickingWorkspaceProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden animate-fadeIn">
+    <div className="fixed inset-0 bg-black/80  z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden animate-fadeIn">
       <div className="bg-surface border border-border w-full max-w-7xl h-[92vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden text-foreground-strong">
         {/* Workspace Header */}
         <div className="px-6 py-4 bg-surface-elevated border-b border-border flex justify-between items-center">
@@ -342,7 +342,7 @@ export const PickingWorkspace: React.FC<PickingWorkspaceProps> = ({
 
         {/* Shortage Dialog */}
         {shortageDialogItem && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70  z-50 flex items-center justify-center p-4">
             <div className="bg-surface-elevated border border-border p-6 rounded-xl max-w-md w-full space-y-4 shadow-2xl">
               <h3 className="text-sm font-bold text-foreground-strong uppercase tracking-wider">Report Physical Shortage</h3>
               <p className="text-xs text-foreground">

@@ -86,7 +86,7 @@ export const OrdersCommandCenter: React.FC<{ fulfilment?: string }> = ({ fulfilm
   };
 
   return (
-    <div className="h-full flex flex-col gap-5 p-6 bg-background text-foreground-strong overflow-y-auto select-none animate-fadeIn">
+    <div className="flex flex-col gap-4 p-6 bg-background text-foreground-strong select-none animate-fadeIn">
       {/* Header & Quick Action Buttons */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>

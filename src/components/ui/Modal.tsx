@@ -16,7 +16,7 @@ export function Modal({ isOpen, onClose, title, children, footer }: ModalProps) 
     return (
         <Dialog.Root open={isOpen} onOpenChange={open => { if (!open) onClose(); }}>
             <Dialog.Portal>
-                <Dialog.Overlay className="modal-overlay fixed inset-0 z-50 bg-overlay/50 backdrop-blur-sm" />
+                <Dialog.Overlay className="modal-overlay fixed inset-0 z-50 bg-overlay/35" />
                 <Dialog.Content aria-describedby={undefined}
                     onOpenAutoFocus={() => { previousFocus.current = document.activeElement as HTMLElement | null; }}
                     onCloseAutoFocus={event => { if (previousFocus.current?.isConnected) { event.preventDefault(); previousFocus.current.focus(); } }}

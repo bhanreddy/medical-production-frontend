@@ -58,7 +58,7 @@ export const ClickCollectPickupModal: React.FC<ClickCollectPickupModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-hidden animate-fadeIn">
+    <div className="fixed inset-0 bg-black/75  z-50 flex items-center justify-center p-4 overflow-hidden animate-fadeIn">
       <div className="bg-surface border border-border w-full max-w-lg rounded-2xl shadow-2xl p-6 text-foreground-strong space-y-5">
         <div className="flex justify-between items-center border-b border-border pb-3">
           <div className="flex items-center gap-2">

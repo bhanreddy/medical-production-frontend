@@ -100,7 +100,7 @@ export const TransferRequestDrawer: React.FC<TransferRequestDrawerProps> = ({
   const destLocations = locations.filter((l) => l.type === destinationLocationType);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60  flex justify-end">
       <div className="w-full max-w-2xl bg-surface border-l border-border h-full flex flex-col shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border bg-background">

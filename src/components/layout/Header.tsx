@@ -36,7 +36,7 @@ export const Header: React.FC = () => {
     }, []);
 
     return (
-        <header className="relative h-20 shrink-0 z-10 flex items-center justify-between px-6 border-b border-border/80 bg-surface-elevated/85 backdrop-blur-md supports-[backdrop-filter]:bg-surface-elevated/70 shadow-[0_1px_0_rgb(255_255_255/0.04)_inset]">
+        <header className="relative h-20 shrink-0 z-10 flex items-center justify-between px-6 border-b border-border/80 bg-surface shadow-[0_1px_0_rgb(255_255_255/0.04)_inset]">
             <div
                 className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent"
                 aria-hidden

@@ -164,7 +164,7 @@ export const AssistedOrderDrawer: React.FC<AssistedOrderDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-end overflow-hidden animate-fadeIn">
+    <div className="fixed inset-0 bg-black/75  z-50 flex items-center justify-end overflow-hidden animate-fadeIn">
       <div className="bg-surface border-l border-border w-full max-w-2xl h-full shadow-2xl flex flex-col overflow-hidden text-foreground-strong animate-slideLeft">
         {/* Header */}
         <div className="px-6 py-4 bg-surface-elevated border-b border-border flex justify-between items-center">

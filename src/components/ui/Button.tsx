@@ -21,18 +21,18 @@ export const Button: React.FC<ButtonProps> = ({
 
     const variants = {
         primary:
-            "bg-primary text-on-primary hover:brightness-110 border border-transparent shadow-sm",
+            "bg-primary text-on-primary hover:brightness-95 border border-transparent",
         secondary:
-            "bg-surface text-foreground border border-border hover:bg-surface-alt shadow-sm",
-        danger: "bg-danger text-on-danger hover:brightness-110 border border-transparent shadow-sm",
-        success: "bg-success text-on-success hover:brightness-110 border border-transparent shadow-sm",
+            "bg-surface text-foreground border border-border hover:bg-surface-alt",
+        danger: "bg-danger text-on-danger hover:brightness-95 border border-transparent",
+        success: "bg-success text-on-success hover:brightness-95 border border-transparent",
         ghost: "shadow-none bg-transparent text-muted hover:text-foreground hover:bg-surface-elevated/80 border border-transparent",
     };
 
     const sizes = {
         sm: "min-h-8 px-3 py-1.5 text-xs rounded-md",
-        md: "min-h-10 px-4 py-2 text-sm rounded-lg",
-        lg: "min-h-12 px-6 py-3 text-base rounded-lg",
+        md: "min-h-9 px-3.5 py-2 text-xs rounded-lg",
+        lg: "min-h-11 px-5 py-2.5 text-sm rounded-lg",
         icon: "h-10 w-10 p-2 rounded-lg shadow-none",
     };
 

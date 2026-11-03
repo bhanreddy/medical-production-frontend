@@ -355,7 +355,7 @@ export const WarehouseOperationsView: React.FC = () => {
 
       {/* Modal: Create Bin */}
       {isBinModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 overflow-hidden bg-black/60  flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-lg max-w-md w-full p-4 space-y-4 shadow-2xl">
             <h3 className="text-sm font-semibold text-foreground-strong">Create Warehouse Storage Bin</h3>
             <form onSubmit={handleCreateBin} className="space-y-3 text-xs">

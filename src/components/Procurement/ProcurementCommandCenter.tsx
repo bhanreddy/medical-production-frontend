@@ -47,7 +47,7 @@ export const ProcurementCommandCenter: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full gap-6 p-6 bg-surface text-foreground-strong min-h-screen">
+    <div className="flex flex-col gap-4 p-6 bg-surface text-foreground-strong">
       {/* HEADER */}
       <div className="flex flex-wrap gap-3 justify-between items-center border-b border-border pb-4">
         <div>
@@ -88,7 +88,7 @@ export const ProcurementCommandCenter: React.FC = () => {
             onClick={() => setActiveTab(tab.id as ProcurementTab)}
             className={`flex items-center gap-2 transition-colors border-b-2 ${
               activeTab === tab.id
-                ? 'bg-surface-elevated text-success border-success/25 shadow-md'
+                ? 'bg-surface-elevated text-primary border-primary/25'
                 : 'text-muted hover:text-foreground-strong border-transparent hover:bg-surface-elevated/50'
             }`}
           >
@@ -147,53 +147,44 @@ export const ProcurementCommandCenter: React.FC = () => {
             {/* QUICK ACTIONS & NOTICES */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="col-span-2 p-5 rounded-xl bg-surface-elevated/40 border border-border">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-foreground mb-4">
-                  Procurement Workflow Gating & Controls
-                </h2>
-                <div className="grid grid-cols-2 gap-4 text-xs text-muted">
-                  <div className="p-3 bg-surface/60 rounded border border-border">
-                    <span className="font-bold text-foreground-strong block mb-1">🛡️ Immutable Inward (GRN)</span>
-                    Stock quantities and batch weighted average costs are strictly committed at GRN posting. Rejected units are isolated.
-                  </div>
-                  <div className="p-3 bg-surface/60 rounded border border-border">
-                    <span className="font-bold text-foreground-strong block mb-1">🔍 3-Way Match Verification</span>
-                    Supplier invoices match against PO rates and GRN accepted counts before liability posting.
-                  </div>
-                  <div className="p-3 bg-surface/60 rounded border border-border">
-                    <span className="font-bold text-foreground-strong block mb-1">⚖️ Free Quantity & Scheme Audit</span>
-                    Commercial engine captures free quantities (e.g. 10+2) and calculates actual effective unit cost.
-                  </div>
-                  <div className="p-3 bg-surface/60 rounded border border-border">
-                    <span className="font-bold text-foreground-strong block mb-1">📜 Debit Note Reconciliation</span>
-                    Purchase returns immediately generate statutory debit notes and reduce supplier payable balance.
-                  </div>
+                <h2 className="text-sm font-semibold mb-4">Quick actions</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { label: 'Purchase orders', hint: 'Track orders with suppliers', tab: 'PURCHASE_ORDERS', icon: Package },
+                    { label: 'Receive stock', hint: 'Review and record deliveries', tab: 'GRN_RECEIVING', icon: PackageCheck },
+                    { label: 'Supplier payments', hint: 'Review balances and payments', tab: 'PAYABLES_PAYMENTS', icon: Wallet },
+                    { label: 'Purchase returns', hint: 'Manage returns to suppliers', tab: 'PURCHASE_RETURNS', icon: Undo2 },
+                  ].map(action => <button key={action.tab} type="button" onClick={() => setActiveTab(action.tab as ProcurementTab)} className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 text-left hover:border-primary/40 hover:bg-surface-elevated transition-colors">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/8 text-primary"><action.icon size={17} aria-hidden /></span>
+                    <span><strong className="block text-xs font-semibold">{action.label}</strong><span className="mt-1 block text-[11px] text-muted">{action.hint}</span></span>
+                  </button>)}
                 </div>
               </div>
 
               <div className="p-5 rounded-xl bg-surface-elevated/40 border border-border flex flex-col justify-between">
                 <div>
                   <h2 className="text-sm font-bold uppercase tracking-wider text-foreground mb-2">
-                    Commercial Scheme Savings
+                    Supplier savings
                   </h2>
                   <div className="text-3xl font-black text-success mt-2">
                     {formatRupees(dashboardData?.schemeSavingsMonthPaise || 0)}
                   </div>
                   <p className="text-xs text-muted mt-2">
-                    Realized supplier trade discounts and free-unit value acquired this period.
+                    Trade discounts and free items this month.
                   </p>
                 </div>
                 <div className="mt-4 pt-4 border-t border-border flex gap-2">
                   <button
                     onClick={() => setActiveTab('REQUISITIONS')}
-                    className="flex-1 py-2 text-xs font-bold rounded bg-success hover:bg-success text-on-primary transition"
+                    className="flex-1 py-2 text-xs font-bold rounded bg-primary hover:brightness-95 text-on-primary transition"
                   >
-                    + New Requisition
+                    New requisition
                   </button>
                   <button
                     onClick={() => setActiveTab('GRN_RECEIVING')}
-                    className="flex-1 py-2 text-xs font-bold rounded bg-info hover:bg-info text-foreground-strong transition"
+                    className="flex-1 py-2 text-xs font-bold rounded bg-surface hover:bg-surface-alt border border-border text-primary transition"
                   >
-                    Receive Stock (GRN)
+                    Receive stock
                   </button>
                 </div>
               </div>

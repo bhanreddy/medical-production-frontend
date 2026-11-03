@@ -3,13 +3,13 @@ import { useDispatch } from 'react-redux';
 import { uiSlice } from '../state/slices';
 import { InventoryAlertService } from '../services/inventoryAlertService';
 import { markStockAlertPopupShown, shouldShowStockAlertPopup } from '../utils/stockAlertSession';
-import { STOCK_ALERT_POPUP_COPY } from '../config/appContent';
+import toast from 'react-hot-toast';
 
 const POLL_MS = 5 * 60 * 1000;
 
 /**
  * Updates header badge counts on a schedule.
- * The blocking popup runs at most once per tab session (on first check with issues), never on each poll — avoids repeated alerts when remounts reset refs or Strict Mode runs twice.
+ * The notification runs at most once per tab session (on first check with issues), never on each poll — avoids repeated alerts when remounts reset refs or Strict Mode runs twice.
  */
 export function useGlobalAlerts(enabled: boolean) {
     const dispatch = useDispatch();
@@ -32,10 +32,9 @@ export function useGlobalAlerts(enabled: boolean) {
                 markStockAlertPopupShown();
                 dispatch(uiSlice.actions.markAlertToast(Date.now()));
                 const parts: string[] = [];
-                if (expiry) parts.push(STOCK_ALERT_POPUP_COPY.batchNearing(expiry));
-                if (lowStock) parts.push(STOCK_ALERT_POPUP_COPY.skuBelow(lowStock));
-                // eslint-disable-next-line no-alert
-                window.alert(`${STOCK_ALERT_POPUP_COPY.prefix} ${parts.join(' • ')}. ${STOCK_ALERT_POPUP_COPY.checkExpiryInventory}`);
+                if (expiry) parts.push(`${expiry} ${expiry === 1 ? 'batch is' : 'batches are'} nearing expiry`);
+                if (lowStock) parts.push(`${lowStock} ${lowStock === 1 ? 'medicine needs' : 'medicines need'} restocking`);
+                toast(parts.join(' · '), { id: 'stock-attention', duration: 6000 });
             } catch (e) {
                 console.warn('Global alert check failed', e);
             }

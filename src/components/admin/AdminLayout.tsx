@@ -21,7 +21,7 @@ export const AdminLayout = () => {
             {/* Sidebar */}
             <aside className="w-64 bg-bg-surface border-r border-border flex flex-col">
                 <div className="p-6 border-b border-border">
-                    <h1 className="text-lg font-semibold text-foreground-strong">Medical POS</h1>
+                    <h1 className="text-lg font-semibold text-foreground-strong">Nexsyrus</h1>
                     <p className="text-xs text-muted mt-1 uppercase tracking-wider">Super Admin</p>
                 </div>
                 

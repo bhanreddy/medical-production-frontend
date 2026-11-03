@@ -4,11 +4,11 @@
  */
 
 export const BRANDING = {
-    productName: 'MedPOS Pro',
-    shortProductName: 'MedPOS',
+    productName: 'Nexsyrus',
+    shortProductName: 'Nexsyrus',
     /** Fallback payee name in UPI QR when shop profile has no medical_name */
     defaultMerchantDisplayName: 'MedPOS Pharmacy',
-    poweredByLine: 'Powered by NexSyrus POS',
+    poweredByLine: 'Nexsyrus Medical POS',
 } as const;
 
 export const FEATURE_BADGES = {

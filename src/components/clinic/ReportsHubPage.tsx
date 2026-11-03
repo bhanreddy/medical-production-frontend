@@ -278,7 +278,8 @@ export const ReportsHubPage: React.FC = () => {
                 </Button>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="workspace-report-layout">
+            <div className="workspace-report-options">
                 {REPORTS.map((r) => {
                     const Icon = r.icon;
                     const active = selected === r.id;
@@ -387,6 +388,7 @@ export const ReportsHubPage: React.FC = () => {
                     </>
                 )}
             </Card>
+            </div>
         </div>
     );
 };

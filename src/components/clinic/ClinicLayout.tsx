@@ -305,7 +305,7 @@ export const ClinicLayout = () => {
           </div>
           <div className="truncate">
             <h2 className="font-bold text-sm truncate">{shopDisplayName}</h2>
-            <p className="workspace-brand-label">Medical POS</p>
+            <p className="workspace-brand-label">Nexsyrus</p>
           </div>
         </div>
 

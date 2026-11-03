@@ -312,7 +312,7 @@ export const ExpiryRecallPage: React.FC = () => {
 
       {/* Recall Trace Modal */}
       {selectedRecall && salesTrace && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60  z-50 flex items-center justify-center p-4">
           <div className="bg-bg-surface border border-border rounded-xl max-w-2xl w-full p-5 space-y-4 max-h-[85vh] overflow-y-auto custom-scrollbar shadow-2xl">
             <div className="flex justify-between items-center pb-3 border-b border-border">
               <div>
@@ -378,7 +378,7 @@ export const ExpiryRecallPage: React.FC = () => {
 
       {/* Create Recall Modal */}
       {showCreateRecallModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60  z-50 flex items-center justify-center p-4">
           <div className="bg-bg-surface border border-border rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl">
             <h2 className="text-base font-bold text-foreground">Register Product Recall</h2>
             <form onSubmit={handleCreateRecall} className="space-y-3 text-xs">

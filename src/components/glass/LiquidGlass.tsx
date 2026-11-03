@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type HTMLAttributes,
-} from 'react';
+import { useState, type HTMLAttributes } from 'react';
 
 /** A rounded lens normal map. Only the bevel displaces the backdrop; content stays crisp. */
 function lensMap() {
@@ -87,44 +81,9 @@ export function LiquidOptics() {
   );
 }
 
-export function LiquidSurface({
-  children,
-  className = '',
-  style,
-  ...props
-}: HTMLAttributes<HTMLDivElement>) {
-  const frame = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (frame.current !== null) cancelAnimationFrame(frame.current);
-    },
-    [],
-  );
-  return (
-    <div
-      {...props}
-      className={`liquid-surface ${className}`}
-      style={style as CSSProperties}
-      onPointerMove={(event) => {
-        if (
-          event.pointerType !== 'mouse' ||
-          matchMedia('(prefers-reduced-motion: reduce)').matches
-        )
-          return;
-        const element = event.currentTarget;
-        const bounds = element.getBoundingClientRect();
-        const x = ((event.clientX - bounds.left) / bounds.width) * 100;
-        const y = ((event.clientY - bounds.top) / bounds.height) * 100;
-        if (frame.current !== null) cancelAnimationFrame(frame.current);
-        frame.current = requestAnimationFrame(() => {
-          element.style.setProperty('--light-x', `${x}%`);
-          element.style.setProperty('--light-y', `${y}%`);
-        });
-      }}
-    >
-      <div className="liquid-content">{children}</div>
-    </div>
-  );
+/** Compatibility wrapper for the shared opaque workspace card. */
+export function LiquidSurface({ children, className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div {...props} className={`liquid-surface ${className}`}><div className="liquid-content">{children}</div></div>;
 }
 
 export function LiquidLandscape() {

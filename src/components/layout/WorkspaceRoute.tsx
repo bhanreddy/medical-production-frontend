@@ -35,7 +35,7 @@ export function WorkspaceRoute({ label }: { label?: string }) {
   const location = useLocation();
   useEffect(() => {
     const title = label || location.pathname.split('/').filter(Boolean).at(-1)?.replaceAll('-', ' ') || 'Workspace';
-    document.title = `${title} · MedPOS`;
+    document.title = `${title} · Nexsyrus`;
     const main = document.getElementById('workspace-content');
     main?.scrollTo({ top: 0, behavior: 'instant' });
   }, [location.pathname, label]);

@@ -59,7 +59,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateById }) => {
     return (
         <div className="h-full flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <FestivalPosterModal poster={poster} onDismiss={dismiss} />
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface-elevated/50 p-6 rounded-2xl border border-border/50 backdrop-blur-md">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface-elevated/50 p-6 rounded-2xl border border-border/50 ">
                 <div className="flex items-center gap-6">
                     <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-primary to-primary/50 flex items-center justify-center text-on-primary shadow-lg shadow-primary/20">
                         <Activity className="w-8 h-8" />
@@ -113,7 +113,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateById }) => {
                         <div className="p-4 bg-primary rounded-2xl shadow-lg shadow-primary/20 text-on-primary fine-group-hover:scale-110 transition-transform duration-300">
                             <PrimaryIcon className="w-12 h-12" />
                         </div>
-                        <kbd className="bg-surface/80 backdrop-blur px-3 py-1 rounded-md text-sm font-bold text-foreground border border-border shadow-sm flex items-center gap-1">
+                        <kbd className="bg-surface/80  px-3 py-1 rounded-md text-sm font-bold text-foreground border border-border shadow-sm flex items-center gap-1">
                             <span className="text-muted">{DASHBOARD_COPY.pressPrefix}</span> {primaryAction.kbd}
                         </kbd>
                     </div>

@@ -373,7 +373,7 @@ export const StocktakePage: React.FC = () => {
 
       {/* Create Session Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60  z-50 flex items-center justify-center p-4">
           <div className="bg-bg-surface border border-border rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl">
             <h2 className="text-base font-bold text-foreground">Create Stocktake Session</h2>
             <form onSubmit={handleCreateSession} className="space-y-3 text-xs">
