@@ -2,6 +2,7 @@
 @import "./styles/liquid-dashboard.css";
 @import "./styles/liquid-material.css";
 @import "./styles/nexsyrus.css";
+@import "./styles/workspace-sidebar.css";
 
 /* Hover variants that only fire for a real mouse (pointer: fine).
    Touch devices apply a sticky :hover on tap, which made the dashboard

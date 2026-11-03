@@ -24,9 +24,7 @@ import {
   LineChart,
   Upload,
   Settings,
-  LogOut,
   Bell,
-  Store,
   Sun,
   Moon,
   AlertTriangle,
@@ -43,6 +41,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "../ui/Button";
+import { ClinicSidebar } from "./ClinicSidebar";
 import { LiquidSurface } from "../glass/LiquidGlass";
 
 type NavItem = { name: string; path: string; icon: LucideIcon; fKey?: number };
@@ -69,7 +68,7 @@ export const ClinicLayout = () => {
       if (event.key === "Escape") setMobileMenuOpen(false);
       if (event.key !== "Tab" || !panel) return;
       const controls = Array.from(
-        panel.querySelectorAll<HTMLElement>("a[href],button:not([disabled])"),
+        panel.querySelectorAll<HTMLElement>("a[href],button:not([disabled]),input:not([disabled])"),
       ).filter((element) => element.offsetParent !== null);
       const first = controls[0],
         last = controls[controls.length - 1];
@@ -233,35 +232,6 @@ export const ClinicLayout = () => {
     : location.pathname.startsWith('/patients/') ? 'Medication history'
     : activeNav?.name || 'Workspace';
 
-  const renderNavLinks = (links: NavItem[]) => {
-    return links.map((link) => {
-      const isActive = activeNav?.path === link.path;
-      const Icon = link.icon;
-      return (
-        <Link
-          key={link.path}
-          to={link.path}
-          title={link.fKey ? `${link.name} (F${link.fKey})` : link.name}
-          aria-keyshortcuts={link.fKey ? `F${link.fKey}` : undefined}
-          aria-current={isActive ? 'page' : undefined}
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
-            isActive
-              ? "bg-accent-primary/10 text-accent-primary"
-              : "text-muted hover:bg-bg-card hover:text-foreground"
-          }`}
-        >
-          <Icon className="w-5 h-5" />
-          <span className="flex-1">{link.name}</span>
-          {link.fKey && (
-            <kbd className="hidden xl:inline text-[10px] font-mono text-muted/70 border border-border rounded px-1 py-0.5 bg-bg-card">
-              F{link.fKey}
-            </kbd>
-          )}
-        </Link>
-      );
-    });
-  };
-
   return (
     <div
       className={`flex h-screen bg-bg-primary text-foreground overflow-hidden clinic-liquid-shell ${mobileMenuOpen ? "is-mobile-menu-open" : ""} ${location.pathname === "/dashboard" ? "nex-dashboard-shell" : ""}`}
@@ -275,97 +245,23 @@ export const ClinicLayout = () => {
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
-      {/* Sidebar */}
-      <aside
-        id="clinic-navigation"
-        role={mobileMenuOpen ? "dialog" : undefined}
-        aria-modal={mobileMenuOpen || undefined}
-        aria-label="Main navigation"
-        className="w-64 bg-bg-surface border-r border-border flex flex-col flex-shrink-0 relative"
-      >
-        <div className="p-4 border-b border-border flex items-center gap-3">
-          <div
-            className={`w-10 h-10 rounded border flex-shrink-0 overflow-hidden flex items-center justify-center ${
-              showShopLogo
-                ? "border-border bg-bg-card"
-                : "bg-accent-primary/20 border-accent-primary/50 text-accent-primary"
-            }`}
-          >
-            {showShopLogo ? (
-              <img
-                key={logoUrl}
-                src={logoUrl}
-                alt=""
-                className="w-full h-full object-contain"
-                onError={() => logoUrl && setFailedLogoUrl(logoUrl)}
-              />
-            ) : (
-              <Store className="w-5 h-5" strokeWidth={2.25} aria-hidden />
-            )}
-          </div>
-          <div className="truncate">
-            <h2 className="font-bold text-sm truncate">{shopDisplayName}</h2>
-            <p className="workspace-brand-label">Nexsyrus</p>
-          </div>
-        </div>
-
-        <button
-          className="liquid-menu-close"
-          onClick={() => setMobileMenuOpen(false)}
-          aria-label="Close navigation"
-        >
-          <X size={18} />
-        </button>
-        <nav className="flex-1 p-3 space-y-6 overflow-y-auto custom-scrollbar">
-          <div>
-            <p className="px-3 text-xs font-bold uppercase tracking-wider text-muted mb-2">
-              Main
-            </p>
-            <div className="space-y-1">{renderNavLinks(MAIN_NAV)}</div>
-          </div>
-          <div>
-            <p className="px-3 text-xs font-bold uppercase tracking-wider text-muted mb-2">
-              People
-            </p>
-            <div className="space-y-1">{renderNavLinks(PEOPLE_NAV)}</div>
-          </div>
-          <div>
-            <p className="px-3 text-xs font-bold uppercase tracking-wider text-muted mb-2">
-              Finance
-            </p>
-            <div className="space-y-1">{renderNavLinks(FINANCE_NAV)}</div>
-          </div>
-          <div>
-            <p className="px-3 text-xs font-bold uppercase tracking-wider text-muted mb-2">
-              Commercial
-            </p>
-            <div className="space-y-1">{renderNavLinks(COMMERCIAL_NAV)}</div>
-          </div>
-          <div>
-            <p className="px-3 text-xs font-bold uppercase tracking-wider text-muted mb-2">
-              System
-            </p>
-            <div className="space-y-1">{renderNavLinks(SYSTEM_NAV)}</div>
-            <div className="text-[10px] uppercase tracking-widest text-muted pt-4 pb-2">
-              Operations
-            </div>
-            <div className="space-y-1">{renderNavLinks(OPERATIONS_NAV)}</div>
-          </div>
-        </nav>
-
-        <div className="p-3 border-t border-border space-y-2">
-          <div className="workspace-footer"><span className="status-dot" /> Pharmacy workspace</div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-muted hover:text-danger hover:bg-danger/10"
-            onClick={() => signOut()}
-          >
-            <LogOut className="w-4 h-4 mr-3" />
-            Sign Out
-          </Button>
-        </div>
-      </aside>
+      <ClinicSidebar
+        primary={MAIN_NAV}
+        sections={[
+          { id: 'people', label: 'People', icon: Users, items: PEOPLE_NAV, defaultOpen: true },
+          { id: 'finance', label: 'Finance', icon: Wallet, items: FINANCE_NAV, defaultOpen: true },
+          { id: 'commercial', label: 'Commercial', icon: Sparkles, items: COMMERCIAL_NAV },
+          { id: 'operations', label: 'Operations', icon: PackageSearch, items: OPERATIONS_NAV },
+        ]}
+        settings={SYSTEM_NAV}
+        activePath={activeNav?.path}
+        shopName={shopDisplayName}
+        logoUrl={showShopLogo ? logoUrl : undefined}
+        onLogoError={() => logoUrl && setFailedLogoUrl(logoUrl)}
+        mobileOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        onSignOut={() => void signOut()}
+      />
 
       <LiquidSurface
         className="liquid-mobile-dock"
