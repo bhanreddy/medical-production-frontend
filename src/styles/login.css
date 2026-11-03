@@ -25,6 +25,9 @@
 .login-story h1 span { color: #fff; }
 .login-story-content > p { color: #e2eaff; font-size: 13px; line-height: 1.7; }
 .login-illustration { position: relative; width: min(100%, 460px); margin: 12px auto; flex: 1; min-height: 320px; display: grid; place-items: center; isolation: isolate; }
+.login-slide { grid-area: 1 / 1; position: relative; width: 100%; opacity: 0; transition: opacity 400ms ease; pointer-events: none; }
+.login-slide.is-active { opacity: 1; }
+.login-products { display: block; width: 100%; height: clamp(320px, 46vh, 480px); object-fit: contain; filter: drop-shadow(0 16px 22px #102e9026); user-select: none; }
 .login-pharmacist { display: block; width: 100%; height: clamp(320px, 46vh, 480px); object-fit: contain; object-position: center; filter: drop-shadow(0 16px 22px #102e9026); mask-image: linear-gradient(to bottom, #000 88%, transparent 100%); animation: login-portrait-breathe 8s ease-in-out infinite; user-select: none; }
 .login-medical-accent { position: absolute; z-index: 1; bottom: 9%; right: -4%; width: 160px; height: 160px; object-fit: contain; filter: drop-shadow(0 10px 14px #102e9033); animation: login-float 9s ease-in-out -2s infinite; user-select: none; }
 .login-story-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid #ffffff40; font-size: 9px; letter-spacing: 1.3px; color: #d7e3ff; }
@@ -34,8 +37,6 @@
 .login-theme-toggle { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--login-line); border-radius: 8px; color: var(--login-muted); }
 .login-theme-toggle:hover { color: var(--login-accent); border-color: var(--login-accent); }
 .login-form-wrap { width: 100%; max-width: 360px; margin: auto; padding: 40px 0; animation: login-enter 400ms ease-out; }
-.login-form-brand { display: flex; align-items: center; gap: 9px; margin-bottom: 34px; font-size: 19px; font-weight: 700; letter-spacing: -.5px; }
-.login-welcome-mark { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; background: var(--login-accent); color: var(--login-paper); font-size: 24px; }
 .login-form-wrap h2 { color: var(--login-ink); font-size: 30px; font-weight: 650; letter-spacing: -1px; line-height: 1.3; }
 .login-description { margin: 10px 0 30px; color: var(--login-muted); font-size: 13px; line-height: 1.65; }
 .login-form { display: flex; flex-direction: column; gap: 20px; }
@@ -65,7 +66,6 @@
 .login-switch { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; padding-top: 26px; margin-top: 26px; border-top: 1px solid var(--login-line); color: var(--login-muted); font-size: 12px; }
 .login-switch button { display: flex; align-items: center; gap: 4px; color: var(--login-accent); font-weight: 600; }
 .login-entry-footer { display: flex; align-items: center; gap: 7px; font-size: 10px; color: var(--login-muted); }
-.login-footer-brand { margin-left: auto; }
 @keyframes login-portrait-breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @keyframes login-float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-6px) rotate(1deg); } }
 @keyframes login-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -80,16 +80,15 @@
   .login-story-content > p, .login-story-footer { display: none; }
   .login-illustration { position: absolute; right: 0; bottom: -14px; width: 190px; height: 190px; min-height: 0; margin: 0; }
   .login-pharmacist { height: 212px; object-position: center bottom; filter: drop-shadow(0 6px 10px #102e9026); }
+  .login-products { height: 190px; filter: drop-shadow(0 6px 10px #102e9026); }
   .login-medical-accent { width: 76px; height: 76px; bottom: 8%; right: 4%; filter: drop-shadow(0 4px 6px #102e9033); }
   .login-entry { padding: 20px 28px 24px; min-height: calc(100dvh - 245px); }
   .login-entry-top { justify-content: space-between; }
   .login-form-wrap { max-width: 420px; padding: 28px 0 34px; }
-  .login-form-brand { margin-bottom: 22px; font-size: 17px; }
   .login-form-wrap h2 { font-size: 27px; }
   .login-description { margin-bottom: 24px; }
   .login-input-wrap input { font-size: 16px; }
-  .login-footer-brand { display: none; }
 }
 @media (max-width: 360px) { .login-story { padding: 22px 20px; } .login-story h1 { font-size: 26px; } .login-illustration { width: 155px; height: 190px; } .login-pharmacist { height: 200px; } .login-medical-accent { width: 62px; height: 62px; } .login-entry { padding: 18px 20px 24px; } }
 @media (prefers-reduced-motion: reduce) { .login-workspace *, .login-workspace *::before, .login-workspace *::after { animation: none !important; transition: none !important; } }
-@media (forced-colors: active) { .login-story, .login-input-wrap, .login-submit, .login-welcome-mark { border: 1px solid CanvasText; } .login-submit { background: ButtonFace; color: ButtonText; } .login-illustration { display: none; } }
+@media (forced-colors: active) { .login-story, .login-input-wrap, .login-submit { border: 1px solid CanvasText; } .login-submit { background: ButtonFace; color: ButtonText; } .login-illustration { display: none; } }

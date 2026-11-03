@@ -263,6 +263,7 @@ export function ClinicDashboardView({
           </div>
         </DashboardCard>
       </div>
+      <div className="dashboard-content-grid">
       <div className="dashboard-insights" data-reveal="">
         <DashboardCard className="dashboard-trend">
           <div className="dashboard-section-heading">
@@ -621,6 +622,7 @@ export function ClinicDashboardView({
             </span>
           </div>
         </DashboardCard>
+      </div>
       </div>
       <footer className="dashboard-brand-panel" data-reveal="">
         <div className="dashboard-brand-top">

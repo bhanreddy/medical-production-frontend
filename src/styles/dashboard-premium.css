@@ -18,7 +18,8 @@
 .nex-dashboard .revenue-footer strong { font-size: 25px; letter-spacing: -.04em; }
 .nex-dashboard .revenue-footer strong span { font-size: 11px; }
 .nex-dashboard .liquid-primary-button { grid-column: 1 / -1; width: fit-content; margin: 0; min-height: 38px; padding: 8px 14px; border-radius: 24px; font-size: 11px; }
-.dashboard-insights { display: grid; grid-template-columns: 1.05fr 1fr; gap: 18px; align-items: stretch; }
+.dashboard-content-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 18px; }
+.dashboard-insights { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; gap: 18px; align-items: stretch; }
 .nex-dashboard .dashboard-trend { padding: 20px 22px; }
 .nex-dashboard .trend-number { margin-top: 8px; font-size: 28px; letter-spacing: -.04em; }
 .nex-dashboard .dashboard-chart { height: 110px; margin-top: 8px; }
@@ -33,14 +34,16 @@
 .nex-dashboard .dashboard-metric .dashboard-symbol { width: 30px; height: 30px; border-radius: 50%; }
 .nex-dashboard .dashboard-actions-title { margin: 17px 0 8px; }
 .nex-dashboard .dashboard-actions-title h2 { font-size: 12px; color: rgb(var(--muted)); }
-.nex-dashboard .dashboard-quick-actions { background: transparent; border: 0; border-radius: 0; flex: 1; }
-.nex-dashboard .dashboard-quick-actions > .liquid-content { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0; }
-.nex-dashboard .dashboard-quick-actions a, .nex-dashboard .dashboard-quick-actions a:first-child { padding: 7px 12px; gap: 8px; min-height: 43px; border: 1px solid rgb(var(--border)); background: rgb(var(--surface-alt)); border-radius: 28px; }
-.nex-dashboard .dashboard-quick-actions a:hover { background: rgb(var(--primary) / .09); border-color: rgb(var(--primary) / .35); }
+.nex-dashboard .dashboard-quick-actions { background: transparent; border: 0; border-radius: 0; flex: 1; display: flex; }
+.nex-dashboard .dashboard-quick-actions > .liquid-content { display: grid; flex: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0; }
+.nex-dashboard .dashboard-quick-actions a, .nex-dashboard .dashboard-quick-actions a:first-child { padding: 7px 12px; gap: 8px; min-height: 43px; border: 1px solid rgb(var(--border)); background: rgb(var(--surface-alt)); border-radius: 28px; transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease; }
+.nex-dashboard .dashboard-quick-actions a:hover { background: #2457e6; border-color: #2457e6; color: #fff; }
+.nex-dashboard .dashboard-quick-actions :is(.dashboard-symbol, .quick-action-arrow) { transition: color 150ms ease; }
+.nex-dashboard .dashboard-quick-actions a:hover :is(.dashboard-symbol, .quick-action-arrow) { color: #fff; }
 .nex-dashboard .dashboard-quick-actions .dashboard-symbol { width: 25px; height: 25px; border-radius: 50%; background: transparent; }
 .nex-dashboard .dashboard-quick-actions .dashboard-symbol svg { width: 17px; height: 17px; }
 .nex-dashboard .dashboard-quick-actions strong { font-size: 11px; }
-.nex-dashboard .dashboard-bottom-grid { grid-template-columns: 1.15fr 1fr; margin-top: 18px; gap: 18px; align-items: start; }
+.nex-dashboard .dashboard-bottom-grid { grid-column: 1 / -1; grid-template-columns: subgrid; margin-top: 0; gap: 18px; align-items: start; }
 .nex-dashboard .dashboard-activity, .nex-dashboard .dashboard-attention { padding: 20px; }
 .dashboard-customer-stack { display: flex; margin: 0 0 10px; }
 .dashboard-customer-stack > span { display: grid; place-items: center; width: 29px; height: 29px; flex-shrink: 0; border: 2px solid rgb(var(--surface)); border-radius: 50%; background: rgb(var(--primary) / .16); color: rgb(var(--primary)); font-size: 9px; font-weight: 650; }
@@ -70,8 +73,8 @@
 .dashboard-brand-label { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 600; }
 .dashboard-brand-label > svg { width: 28px; height: 28px; padding: 5px; border: 1px solid #ffffff65; border-radius: 7px; }
 .dashboard-brand-top nav { display: flex; align-items: center; gap: 8px; }
-.dashboard-brand-top nav a { display: flex; align-items: center; gap: 7px; min-height: 32px; padding: 6px 11px; border: 1px solid #ffffff45; border-radius: 22px; font-size: 10px; color: #fff; }
-.dashboard-brand-top nav a:hover { background: #ffffff18; }
+.dashboard-brand-top nav a { display: flex; align-items: center; gap: 7px; min-height: 32px; padding: 6px 11px; border: 1px solid #ffffff45; border-radius: 22px; font-size: 10px; color: #fff; transition: background-color 150ms ease, color 150ms ease; }
+.dashboard-brand-top nav a:hover { background: #fff; color: #000; }
 .dashboard-brand-wordmark { width: fit-content; margin: 19px auto 0; font-size: clamp(65px, 12vw, 172px); font-weight: 750; letter-spacing: -.06em; line-height: 1.1; color: #fff; }
 .nex-dashboard :is(.dashboard-stock-visual, .dashboard-brand-panel a):focus-visible { outline: 2px solid #2457e6; outline-offset: 3px; }
 .nex-dashboard .dashboard-brand-panel a:focus-visible { outline-color: #fff; }
@@ -79,7 +82,6 @@
   .nex-dashboard .revenue-value { font-size: clamp(42px, 6vw, 64px); }
   .nex-dashboard .dashboard-metric > .liquid-content { align-items: flex-start; }
   .nex-dashboard .dashboard-metric .dashboard-symbol { display: none; }
-  .nex-dashboard .dashboard-bottom-grid { grid-template-columns: 1.1fr 1fr; }
   .nex-dashboard .dashboard-sales-table-head, .nex-dashboard .dashboard-sale { grid-template-columns: minmax(0, 1fr) 70px; gap: 8px; }
   .nex-dashboard .dashboard-sales-table-head > span:nth-child(2), .nex-dashboard .sale-payment { display: none; }
 }
@@ -97,7 +99,8 @@
   .dashboard-brand-wordmark { font-size: clamp(65px, 13vw, 105px); }
 }
 @media (max-width: 560px) {
-  .dashboard-insights { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .dashboard-content-grid { grid-template-columns: minmax(0, 1fr); }
+  .dashboard-insights { gap: 14px; }
   .nex-dashboard .dashboard-card-heading { font-size: 9px; }
   .nex-dashboard .dashboard-hero-date { font-size: 9px; padding: 4px 7px; }
   .nex-dashboard .revenue-value { font-size: clamp(40px, 11vw, 57px); }
