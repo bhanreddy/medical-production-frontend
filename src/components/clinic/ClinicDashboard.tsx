@@ -264,8 +264,7 @@ export function ClinicDashboardView({
         </DashboardCard>
       </div>
       <div className="dashboard-content-grid">
-      <div className="dashboard-insights" data-reveal="">
-        <DashboardCard className="dashboard-trend">
+        <DashboardCard className="dashboard-trend" data-reveal="">
           <div className="dashboard-section-heading">
             <div>
               <h2>Weekly report</h2>
@@ -409,7 +408,8 @@ export function ClinicDashboardView({
               </div>
             )}
           </div>
-        </DashboardCard>        <div className="dashboard-utilities">
+        </DashboardCard>
+        <div className="dashboard-utilities" data-reveal="">
       <div className="dashboard-financials">
         {[
           {
@@ -494,9 +494,7 @@ export function ClinicDashboardView({
         ))}
       </DashboardCard>
         </div>
-      </div>
-      <div className="dashboard-bottom-grid" data-reveal="">
-        <DashboardCard className="dashboard-activity">
+        <DashboardCard className="dashboard-activity" data-reveal="">
           <div className="dashboard-section-heading">
             <div>
               {recentCustomers.length > 0 && <div className="dashboard-customer-stack" aria-label="Recent customers">{recentCustomers.map(customer => <span key={customer} title={customer} aria-label={customer}>{customer.split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()}</span>)}</div>}
@@ -561,7 +559,7 @@ export function ClinicDashboardView({
             )}
           </div>
         </DashboardCard>
-        <DashboardCard className="dashboard-attention">
+        <DashboardCard className="dashboard-attention" data-reveal="">
           <div className="dashboard-section-heading">
             <div>
               <h2>Stock alerts</h2>
@@ -622,7 +620,6 @@ export function ClinicDashboardView({
             </span>
           </div>
         </DashboardCard>
-      </div>
       </div>
       <footer className="dashboard-brand-panel" data-reveal="">
         <div className="dashboard-brand-top">

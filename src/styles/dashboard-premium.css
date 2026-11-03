@@ -18,8 +18,7 @@
 .nex-dashboard .revenue-footer strong { font-size: 25px; letter-spacing: -.04em; }
 .nex-dashboard .revenue-footer strong span { font-size: 11px; }
 .nex-dashboard .liquid-primary-button { grid-column: 1 / -1; width: fit-content; margin: 0; min-height: 38px; padding: 8px 14px; border-radius: 24px; font-size: 11px; }
-.dashboard-content-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 18px; }
-.dashboard-insights { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; gap: 18px; align-items: stretch; }
+.dashboard-content-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
 .nex-dashboard .dashboard-trend { padding: 20px 22px; }
 .nex-dashboard .trend-number { margin-top: 8px; font-size: 28px; letter-spacing: -.04em; }
 .nex-dashboard .dashboard-chart { height: 110px; margin-top: 8px; }
@@ -43,8 +42,7 @@
 .nex-dashboard .dashboard-quick-actions .dashboard-symbol { width: 25px; height: 25px; border-radius: 50%; background: transparent; }
 .nex-dashboard .dashboard-quick-actions .dashboard-symbol svg { width: 17px; height: 17px; }
 .nex-dashboard .dashboard-quick-actions strong { font-size: 11px; }
-.nex-dashboard .dashboard-bottom-grid { grid-column: 1 / -1; grid-template-columns: subgrid; margin-top: 0; gap: 18px; align-items: start; }
-.nex-dashboard .dashboard-activity, .nex-dashboard .dashboard-attention { padding: 20px; }
+.nex-dashboard .dashboard-activity, .nex-dashboard .dashboard-attention { padding: 20px; align-self: start; }
 .dashboard-customer-stack { display: flex; margin: 0 0 10px; }
 .dashboard-customer-stack > span { display: grid; place-items: center; width: 29px; height: 29px; flex-shrink: 0; border: 2px solid rgb(var(--surface)); border-radius: 50%; background: rgb(var(--primary) / .16); color: rgb(var(--primary)); font-size: 9px; font-weight: 650; }
 .dashboard-customer-stack > span + span { margin-left: -7px; }
@@ -92,7 +90,7 @@
   .nex-dashboard .revenue-footer { flex: none; grid-template-columns: 1fr 1fr auto; gap: 12px; padding: 15px 0 0; margin: 0; border-left: 0; border-top: 1px solid #ffffff35; align-items: end; }
   .nex-dashboard .liquid-primary-button { grid-column: auto; align-self: end; padding: 8px 10px; }
   .nex-dashboard .liquid-primary-button > svg:last-child { display: none; }
-  .nex-dashboard .dashboard-bottom-grid { grid-template-columns: minmax(0, 1fr); }
+  .nex-dashboard .dashboard-activity, .nex-dashboard .dashboard-attention { grid-column: 1 / -1; }
   .nex-dashboard .dashboard-metric { padding: 15px 12px; }
   .nex-dashboard .dashboard-metric strong { font-size: 22px; }
   .nex-dashboard .dashboard-brand-panel { padding: 20px 22px 18px; }
@@ -100,7 +98,8 @@
 }
 @media (max-width: 560px) {
   .dashboard-content-grid { grid-template-columns: minmax(0, 1fr); }
-  .dashboard-insights { gap: 14px; }
+  .dashboard-content-grid { row-gap: 14px; }
+  .nex-dashboard .dashboard-activity, .nex-dashboard .dashboard-attention { margin-top: 4px; }
   .nex-dashboard .dashboard-card-heading { font-size: 9px; }
   .nex-dashboard .dashboard-hero-date { font-size: 9px; padding: 4px 7px; }
   .nex-dashboard .revenue-value { font-size: clamp(40px, 11vw, 57px); }
