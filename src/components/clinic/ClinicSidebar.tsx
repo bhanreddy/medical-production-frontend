@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
-  ChevronDown, ChevronRight, LogOut, PanelLeftClose, PanelLeftOpen,
+  ChevronRight, LogOut, PanelLeftClose, PanelLeftOpen,
   Search, Store, X, type LucideIcon,
 } from 'lucide-react';
 
@@ -103,7 +103,7 @@ export function ClinicSidebar({ primary, sections, settings, activePath, shopNam
         <span className="sidebar-link-icon"><Icon size={18} strokeWidth={1.8} aria-hidden /></span>
         <span className="sidebar-link-label">{item.name}</span>
         {item.fKey && <kbd className="sidebar-shortcut" aria-hidden>F{item.fKey}</kbd>}
-        {activePath === item.path && <span className="sidebar-active-dot" aria-hidden />}
+        {activePath === item.path && <ChevronRight className="sidebar-active-chevron" size={15} aria-hidden />}
       </Link>
     );
     return inMenu ? <DropdownMenu.Item key={item.path} asChild>{link}</DropdownMenu.Item> : link;
@@ -117,7 +117,7 @@ export function ClinicSidebar({ primary, sections, settings, activePath, shopNam
           <span className="sidebar-brand-mark">
             {logoUrl ? <img src={logoUrl} alt="" onError={onLogoError} /> : <Store size={21} strokeWidth={1.8} aria-hidden />}
           </span>
-          <span className="sidebar-brand-copy"><span className="sidebar-brand-product">Nexsyrus</span><span className="sidebar-shop-name">{shopName}</span></span>
+          <span className="sidebar-brand-copy"><span className="sidebar-shop-name">{shopName}</span><span className="sidebar-brand-product">Nexsyrus workspace</span></span>
         </Link>
         <button type="button" className="sidebar-toggle" onClick={() => changeCompact(!compact)}
           aria-label={compact ? 'Expand sidebar' : 'Collapse sidebar'} title={compact ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!compact}>
@@ -148,6 +148,7 @@ export function ClinicSidebar({ primary, sections, settings, activePath, shopNam
           <p className="sidebar-section-caption">Workspace</p>
           <div className="sidebar-links">{primary.filter(matches).map(item => renderLink(item))}</div>
         </section>}
+        {sections.some(section => section.items.some(matches)) && !compact && <div className="sidebar-category-heading"><span>Pharmacy workspace</span><span aria-hidden>{sections.filter(section => section.items.some(matches)).length}</span></div>}
         {sections.map(section => {
           const items = section.items.filter(matches);
           if (!items.length) return null;
@@ -158,7 +159,7 @@ export function ClinicSidebar({ primary, sections, settings, activePath, shopNam
           if (compact) return (
             <DropdownMenu.Root key={section.id}>
               <DropdownMenu.Trigger asChild><button type="button" className={`sidebar-group-trigger${hasActive ? ' is-active' : ''}`} aria-label={`${section.label} pages`} title={section.label}>
-                <Icon size={19} strokeWidth={1.8} aria-hidden /><ChevronRight size={11} className="sidebar-group-hint" aria-hidden />
+                <span className={`sidebar-section-icon sidebar-icon-${section.id}`}><Icon size={19} strokeWidth={1.8} aria-hidden /></span><ChevronRight size={11} className="sidebar-group-hint" aria-hidden />
               </button></DropdownMenu.Trigger>
               <DropdownMenu.Portal><DropdownMenu.Content className="sidebar-flyout" side="right" align="start" sideOffset={10} collisionPadding={12}>
                 <DropdownMenu.Label className="sidebar-flyout-title">{section.label}</DropdownMenu.Label>
@@ -166,12 +167,13 @@ export function ClinicSidebar({ primary, sections, settings, activePath, shopNam
               </DropdownMenu.Content></DropdownMenu.Portal>
             </DropdownMenu.Root>
           );
-          return <section key={section.id} className="sidebar-section">
-            <button type="button" className="sidebar-section-toggle" aria-expanded={expanded} aria-controls={`sidebar-group-${section.id}`}
+          return <section key={section.id} className="sidebar-section sidebar-tool-section">
+            <button type="button" className={`sidebar-section-toggle${hasActive ? ' has-active-page' : ''}`} aria-expanded={expanded} aria-controls={`sidebar-group-${section.id}`}
               onClick={() => setOpenSections(current => ({ ...current, [section.id]: { expanded: !expanded, path: activePath } }))} disabled={Boolean(search)}>
-              <span>{section.label}</span><ChevronDown size={13} aria-hidden />
+              <span className={`sidebar-section-icon sidebar-icon-${section.id}`}><Icon size={18} strokeWidth={1.8} aria-hidden /></span>
+              <span className="sidebar-section-label">{section.label}</span><ChevronRight className="sidebar-section-chevron" size={14} aria-hidden />
             </button>
-            <div id={`sidebar-group-${section.id}`} className="sidebar-links" hidden={!expanded}>{items.map(item => renderLink(item))}</div>
+            <div id={`sidebar-group-${section.id}`} className="sidebar-links sidebar-nested-links" hidden={!expanded}>{items.map(item => renderLink(item))}</div>
           </section>;
         })}
         {search && settings.some(matches) && <section className="sidebar-section" aria-label="Settings search results"><p className="sidebar-section-caption">Settings</p><div className="sidebar-links">{settings.filter(matches).map(item => renderLink(item))}</div></section>}

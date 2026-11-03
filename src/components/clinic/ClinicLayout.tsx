@@ -248,8 +248,8 @@ export const ClinicLayout = () => {
       <ClinicSidebar
         primary={MAIN_NAV}
         sections={[
-          { id: 'people', label: 'People', icon: Users, items: PEOPLE_NAV, defaultOpen: true },
-          { id: 'finance', label: 'Finance', icon: Wallet, items: FINANCE_NAV, defaultOpen: true },
+          { id: 'people', label: 'People', icon: Users, items: PEOPLE_NAV },
+          { id: 'finance', label: 'Finance', icon: Wallet, items: FINANCE_NAV },
           { id: 'commercial', label: 'Commercial', icon: Sparkles, items: COMMERCIAL_NAV },
           { id: 'operations', label: 'Operations', icon: PackageSearch, items: OPERATIONS_NAV },
         ]}
