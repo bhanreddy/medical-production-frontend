@@ -16,11 +16,12 @@ const getStoredTheme = (): ThemeMode | null => {
 
 export const getInitialTheme = (): ThemeMode => {
     const stored = getStoredTheme();
-    return stored ?? 'dark';
+    return stored ?? 'light';
 };
 
 export const applyThemeToDocument = (theme: ThemeMode) => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.documentElement.style.colorScheme = theme;
 };
 
 const withNoThemeTransition = (fn: () => void) => {
@@ -42,7 +43,6 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
     theme: getInitialTheme(),
 
     setTheme: (theme: ThemeMode) => {
-        if (get().theme === theme) return;
         withNoThemeTransition(() => {
             applyThemeToDocument(theme);
             try {
@@ -59,6 +59,19 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
         get().setTheme(next);
     },
 }));
+
+// Keep multiple windows in agreement without rewriting the storage event back.
+if (typeof window !== 'undefined') {
+    const onStorage = (event: StorageEvent) => {
+        if (event.key !== STORAGE_KEY && event.key !== null) return;
+        try { if (event.storageArea !== localStorage) return; } catch { return; }
+        const theme = getInitialTheme();
+        applyThemeToDocument(theme);
+        if (useThemeStore.getState().theme !== theme) useThemeStore.setState({ theme });
+    };
+    window.addEventListener('storage', onStorage);
+    if (import.meta.hot) import.meta.hot.dispose(() => window.removeEventListener('storage', onStorage));
+}
 
 export const useTheme = () => {
     const theme = useThemeStore((s) => s.theme);

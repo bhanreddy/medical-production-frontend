@@ -11,7 +11,6 @@
   box-shadow: 2px 0 10px rgb(var(--overlay) / .015);
   transition: width 180ms ease;
 }
-.nex-dashboard-shell > .workspace-sidebar { --on-primary: 255 255 255; }
 .workspace-sidebar .sidebar-brand {
   display: flex;
   align-items: center;
